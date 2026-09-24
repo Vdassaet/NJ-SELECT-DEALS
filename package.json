@@ -19,6 +19,7 @@
   "dependencies": {
     "@prisma/client": "^5.21.1",
     "@stripe/stripe-js": "^9.17.0",
+    "@supabase/supabase-js": "^2.117.1",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "jose": "^5.9.6",
