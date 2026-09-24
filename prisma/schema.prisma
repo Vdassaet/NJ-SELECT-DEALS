@@ -1,0 +1,414 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum AddressType {
+  SHIPPING
+  BILLING
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  role         Role        @default(CUSTOMER)
+  phone        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  addresses    Address[]
+  orders       Order[]
+  reviews      Review[]
+  inventoryLogs InventoryLog[]
+
+  @@map("users")
+}
+
+model Address {
+  id         String      @id @default(cuid())
+  userId     String
+  type       AddressType @default(SHIPPING)
+  fullName   String
+  street     String
+  apartment  String?
+  city       String
+  state      String
+  postalCode String
+  country    String      @default("US")
+  phone      String?
+  isDefault  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+  promotions  Promotion[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                String           @id @default(cuid())
+  name              String
+  slug              String           @unique
+  sku               String           @unique
+  brand             String?
+  description       String
+  price             Float
+  salePrice         Float?
+  costPrice         Float?
+  inventory         Int              @default(0)
+  reservedQuantity  Int              @default(0)
+  lowStockThreshold Int              @default(5)
+  weight            Float?
+  isFeatured        Boolean          @default(false)
+  isNewArrival      Boolean          @default(true)
+  isBestSeller      Boolean          @default(false)
+  isActive          Boolean          @default(true)
+  rating            Float            @default(5.0)
+  reviewCount       Int              @default(0)
+  categoryId        String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  category          Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images            ProductImage[]
+  variants          ProductVariant[]
+  orderItems        OrderItem[]
+  reviews           Review[]
+  inventoryLogs     InventoryLog[]
+  promotions        Promotion[]      @relation("ProductPromotions")
+  relatedOrigins    ProductRelation[] @relation("OriginProduct")
+  relatedTargets    ProductRelation[] @relation("TargetProduct")
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  altText   String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductVariant {
+  id        String      @id @default(cuid())
+  productId String
+  name      String
+  sku       String      @unique
+  price     Float?
+  inventory Int         @default(0)
+
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model Order {
+  id                 String        @id @default(cuid())
+  orderNumber        String        @unique
+  userId             String?
+  guestEmail         String?
+  status             OrderStatus   @default(PENDING)
+  paymentStatus      PaymentStatus @default(PENDING)
+  subtotal           Float
+  discount           Float         @default(0)
+  shippingCost       Float         @default(0)
+  tax                Float         @default(0)
+  total              Float
+
+  stripePaymentId    String?       @unique
+  stripeSessionId    String?       @unique
+
+  // Shipping Address Snapshot
+  shippingName       String
+  shippingStreet     String
+  shippingApartment  String?
+  shippingCity       String
+  shippingState      String
+  shippingPostalCode String
+  shippingCountry    String        @default("US")
+  shippingPhone      String?
+  // Shipping & Tracking
+  carrier            String?
+  trackingNumber     String?
+  trackingUrl        String?
+  notes              String?
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+  payments           Payment[]
+  emails             EmailLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String          @id @default(cuid())
+  orderId      String
+  productId    String
+  variantId    String?
+  productName  String
+  productImage String?
+  price        Float
+  quantity     Int
+  total        Float
+
+  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Settings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Extensibility Models for Phase 2
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String
+  amount        Float
+  currency      String        @default("USD")
+  provider      String        @default("MANUAL")
+  transactionId String?
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  rating    Int
+  title     String?
+  comment   String
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+  @@map("reviews")
+}
+
+model Coupon {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  discountType   String    @default("PERCENTAGE") // PERCENTAGE or FIXED
+  discountValue  Float
+  minOrderAmount Float?
+  maxUses        Int?
+  usedCount      Int       @default(0)
+  startDate      DateTime  @default(now())
+  endDate        DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("coupons")
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model EmailLog {
+  id         String      @id @default(cuid())
+  orderId    String?
+  recipient  String
+  subject    String
+  template   String
+  status     EmailStatus @default(PENDING)
+  error      String?
+  providerId String?
+  metadata   Json?
+  sentAt     DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  order      Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([recipient])
+  @@index([status])
+  @@map("email_logs")
+}
+
+model InventoryLog {
+  id               String       @id @default(cuid())
+  productId        String
+  sku              String
+  previousQuantity Int
+  newQuantity      Int
+  difference       Int
+  reason           String       // ORDER_PLACED, ORDER_CANCELLED, ORDER_REFUNDED, MANUAL_ADJUSTMENT, RESTOCK, etc.
+  orderNumber      String?
+  performedBy      String?      // Admin email, customer email, or "SYSTEM"
+  userId           String?
+  createdAt        DateTime     @default(now())
+
+  product          Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([sku])
+  @@index([createdAt])
+  @@index([orderNumber])
+  @@map("inventory_logs")
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  SALE_PRICE
+  TIERED_VOLUME
+  BUY_X_GET_Y
+  BUNDLE
+  FREE_SHIPPING
+  FLASH_SALE
+}
+
+enum PromotionScope {
+  ALL_PRODUCTS
+  CATEGORY
+  PRODUCT
+  BUNDLE
+}
+
+model Promotion {
+  id                 String         @id @default(cuid())
+  name               String
+  description        String?
+  type               PromotionType  @default(PERCENTAGE)
+  scope              PromotionScope @default(PRODUCT)
+  discountType       String?        // PERCENTAGE, FIXED_AMOUNT, SALE_PRICE, FREE_SHIPPING
+  discountValue      Float?
+  salePrice          Float?
+  couponCode         String?        @unique
+  categoryId         String?
+  minOrderSubtotal   Float?
+  minQuantity        Int?
+  buyQuantity        Int?           // Buy X
+  getQuantity        Int?           // Get Y
+  getDiscountPercent Float?         // % off on Y (100 = Free, 50 = 50% off)
+  tieredRules        Json?          // Array of { minQty: number, discountPercent: number }
+  bundleProductIds   Json?          // Array of product IDs required for bundle
+  maxQuantity        Int?           // Flash sale maximum quota or per-order cap
+  usageLimit         Int?           // Total maximum coupon redemptions
+  usedCount          Int            @default(0)
+  startDate          DateTime       @default(now())
+  endDate            DateTime?
+  isActive           Boolean        @default(true)
+  isFlashSale        Boolean        @default(false)
+  bannerText         String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  category           Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  products           Product[]      @relation("ProductPromotions")
+
+  @@index([type])
+  @@index([scope])
+  @@index([isActive])
+  @@index([couponCode])
+  @@index([startDate, endDate])
+  @@map("promotions")
+}
+
+model ProductRelation {
+  id             String   @id @default(cuid())
+  productId      String
+  relatedId      String
+  relationship   String   @default("RELATED") // RELATED, UPSELL, CROSS_SELL
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  product        Product  @relation("OriginProduct", fields: [productId], references: [id], onDelete: Cascade)
+  relatedProduct Product  @relation("TargetProduct", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, relatedId])
+  @@index([productId])
+  @@index([relatedId])
+  @@map("product_relations")
+}
+
