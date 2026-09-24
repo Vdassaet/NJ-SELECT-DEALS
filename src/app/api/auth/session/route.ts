@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 
@@ -9,3 +10,4 @@ export async function GET() {
     return NextResponse.json({ user: null });
   }
 }
+

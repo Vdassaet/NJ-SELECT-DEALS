@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateOrderPricing } from '@/lib/pricing-engine';
 
@@ -49,3 +50,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

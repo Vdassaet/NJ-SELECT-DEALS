@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { completePaidOrder, updateOrderPaymentState } from '@/lib/order-service';
@@ -139,3 +140,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
