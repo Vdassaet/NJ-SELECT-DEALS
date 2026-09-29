@@ -63,12 +63,19 @@ export async function POST(request: NextRequest) {
 
     if (user) {
       const resetToken = await createPasswordResetToken(user);
-      const host = request.headers.get('host');
-      const origin = request.nextUrl.origin;
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ||
-        (host ? `https://${host}` : origin);
-      const resetUrl = `${baseUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
+      const forwardedHost = request.headers.get('x-forwarded-host');
+      const host = forwardedHost || request.headers.get('host');
+      const proto = request.headers.get('x-forwarded-proto') || 'https';
+
+      let baseUrl = host ? `${proto}://${host}` : request.nextUrl.origin;
+      if (!baseUrl || baseUrl.includes('localhost') || baseUrl.includes('nj-select-deals.vercel.app')) {
+        if (process.env.NEXT_PUBLIC_BASE_URL && !process.env.NEXT_PUBLIC_BASE_URL.includes('nj-select-deals.vercel.app')) {
+          baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+        } else {
+          baseUrl = 'https://www.njselectdeals.com';
+        }
+      }
+      const resetUrl = `${baseUrl.replace(/\/$/, '')}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
 
       // Dispatch reset email via Resend or log for development
       await sendPasswordResetEmail({

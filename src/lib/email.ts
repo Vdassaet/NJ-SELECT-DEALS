@@ -54,7 +54,7 @@ export async function getStoreEmailConfig(): Promise<StoreEmailConfig> {
         storeEmail,
       baseUrl:
         process.env.NEXT_PUBLIC_BASE_URL ||
-        'http://localhost:3000',
+        'https://www.njselectdeals.com',
     };
   } catch (err) {
     return {
@@ -63,7 +63,7 @@ export async function getStoreEmailConfig(): Promise<StoreEmailConfig> {
       storePhone: process.env.NEXT_PUBLIC_STORE_PHONE || '(800) 555-DEAL',
       storeAddress: '100 Route 17 North, Paramus, NJ 07652',
       orderNotificationEmail: process.env.ADMIN_EMAIL || 'admin@njselectdeals.com',
-      baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
+      baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'https://www.njselectdeals.com',
     };
   }
 }
