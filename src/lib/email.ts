@@ -130,12 +130,30 @@ export async function sendEmailWithLog(params: SendEmailParams): Promise<SendEma
       return { success: true, logId: emailLog?.id };
     }
 
-    const { data, error } = await resend.emails.send({
+    let sendResult = await resend.emails.send({
       from: defaultFrom,
       to: [to.trim()],
       subject,
       html,
     });
+
+    // If Resend rejects due to unverified custom domain, automatically retry with onboarding@resend.dev
+    if (
+      sendResult.error &&
+      (sendResult.error.message?.includes('not verified') ||
+        sendResult.error.message?.includes('domain') ||
+        defaultFrom.includes('njselectdeals.com'))
+    ) {
+      console.warn('[EMAIL WARNING] Custom domain not verified on Resend, retrying with onboarding@resend.dev fallback');
+      sendResult = await resend.emails.send({
+        from: 'NJ Select Deals <onboarding@resend.dev>',
+        to: [to.trim()],
+        subject,
+        html,
+      });
+    }
+
+    const { data, error } = sendResult;
 
     if (error) {
       console.error('[EMAIL ERROR] Resend provider error:', error);
