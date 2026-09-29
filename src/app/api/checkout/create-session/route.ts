@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
             currency: 'usd',
             product_data: {
               name: item.name + (pricing.orderDiscount > 0 ? ' (Discount Applied)' : ''),
-              images: item.image ? [item.image] : [],
+              images: item.image ? [item.image.startsWith('http') ? item.image : `${process.env.NEXT_PUBLIC_BASE_URL || 'https://njselectdeals.com'}${item.image}`] : [],
             },
             unit_amount: unitCents,
           },
