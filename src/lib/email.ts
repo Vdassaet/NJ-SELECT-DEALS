@@ -5,7 +5,7 @@ import { EmailStatus } from '@prisma/client';
 import { getTrackingUrl } from '@/lib/shipping-engine';
 
 const resendApiKey = process.env.RESEND_API_KEY || '';
-const defaultFrom = process.env.EMAIL_FROM || 'NJ Select Deals <onboarding@resend.dev>';
+const defaultFrom = process.env.EMAIL_FROM || 'NJ Select Deals <orders@njselectdeals.com>';
 
 export const resend = new Resend(resendApiKey || 're_placeholder_for_development');
 
