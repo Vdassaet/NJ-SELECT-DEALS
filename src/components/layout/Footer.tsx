@@ -42,11 +42,11 @@ export function Footer() {
 
             <div className="flex items-start space-x-3.5">
               <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20">
-                <RefreshCw className="w-5 h-5" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
-                <h4 className="font-bold text-white text-sm">Hassle-Free 30-Day Returns</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Quick refunds and simple returns</p>
+                <h4 className="font-bold text-white text-sm">Direct Store Guarantee</h4>
+                <p className="text-xs text-slate-400 mt-0.5">Authentic, sealed &amp; quality inspected</p>
               </div>
             </div>
 
@@ -117,7 +117,7 @@ export function Footer() {
               <li><Link href="/contact" className="hover:text-brand-400 transition-colors">Contact Customer Support</Link></li>
               <li><Link href="/faq" className="hover:text-brand-400 transition-colors">Frequently Asked Questions</Link></li>
               <li><Link href="/shipping" className="hover:text-brand-400 transition-colors">Shipping Rates & Policies</Link></li>
-              <li><Link href="/returns" className="hover:text-brand-400 transition-colors">30-Day Return Guarantee</Link></li>
+              <li><Link href="/returns" className="hover:text-brand-400 transition-colors">Return &amp; Refund Policy</Link></li>
               <li><Link href="/account/orders" className="hover:text-brand-400 transition-colors">Track My Order</Link></li>
             </ul>
           </div>

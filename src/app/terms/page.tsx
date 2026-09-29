@@ -51,6 +51,37 @@ export default function TermsPage() {
             To uphold the integrity of our customer community, product reviews can only be submitted by verified purchasers of that specific item. Reviews containing abusive language or irrelevant advertising are subject to moderation and removal.
           </p>
         </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-black text-slate-900">4. Returns, Refunds &amp; Final Sale Merchandise</h2>
+          <p>
+            NJ Select Deals sells liquid goods, beauty products, cosmetics, personal care, hair care, food, candy, chocolate, and other consumable or hygiene-sensitive products. For sanitary, health, and consumer safety reasons, these items are strictly <strong>Final Sale and Non-Returnable</strong> once dispatched from our warehouse.
+          </p>
+          <p>
+            We do not accept returns or issue refunds due to change of mind, customer ordering mistakes, or subjective dissatisfaction with scent, flavor, or texture. For comprehensive details, please review our full <a href="/returns" className="text-brand-600 font-bold hover:underline">Return &amp; Refund Policy</a>.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-black text-slate-900">5. Damaged, Defective, or Incorrect Shipments</h2>
+          <p>
+            If a product arrives materially damaged, leaking, broken, defective, or incorrect, the customer must notify NJ Select Deals at <a href="mailto:support@njselectdeals.com" className="text-brand-600 font-bold hover:underline">support@njselectdeals.com</a> within <strong>48 hours of carrier delivery</strong>. Mandatory clear photographs of the damaged product, interior packaging, outer shipping carton, and the legible carrier shipping label must be provided. Original packaging must be retained until the investigation is complete. NJ Select Deals will review the claim and, where appropriate at its discretion, may offer a replacement, store credit, or refund. Refunds are not automatically guaranteed.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-black text-slate-900">6. Order Cancellations &amp; Delivery Address Accuracy</h2>
+          <p>
+            Customers are responsible for providing complete, accurate delivery addresses and confirming item details prior to checkout. Refused deliveries, failed delivery attempts, or packages returned due to incorrect addresses provided by the customer do not qualify for automatic refunds. Orders may only be cancelled prior to entering warehouse processing or fulfillment; once an order has entered fulfillment or has shipped, it cannot be cancelled or recalled.
+          </p>
+        </section>
+
+        <section className="space-y-2">
+          <h2 className="text-base font-black text-slate-900">7. Statutory Rights &amp; Legal Compliance</h2>
+          <p>
+            Nothing in these Terms or in our store policies is intended to limit any rights or remedies that cannot legally be excluded or limited under applicable federal, state, or local law.
+          </p>
+        </section>
       </div>
     </div>
   );

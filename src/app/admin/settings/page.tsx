@@ -51,7 +51,7 @@ export default function AdminSettingsPage() {
     payment_instructions: 'Payment securely processed via Stripe encrypted payment gateway.',
 
     // Policies
-    policy_refund: 'We offer a 30-day return policy for unopened items in original packaging. Contact support to initiate a return.',
+    policy_refund: 'All sales of liquids, cosmetics, personal care, beauty, hair care, confectionery, and consumable goods are final for health and safety reasons. For damaged, defective, or incorrect items, contact support within 48 hours of delivery with photographic evidence.',
     policy_privacy: 'NJ Select Deals respects your privacy. We never sell or distribute your personal contact information.',
     policy_terms: 'By using this site, you agree to our standard terms of service and order fulfillment policies.',
 

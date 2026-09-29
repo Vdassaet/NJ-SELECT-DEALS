@@ -604,6 +604,19 @@ export default function CheckoutPage() {
             </p>
           </div>
 
+          {/* Terms & Return Policy Acknowledgment */}
+          <p className="text-[11px] text-slate-500 text-center leading-relaxed">
+            By clicking &quot;Pay Now&quot;, you agree to our{' '}
+            <Link href="/terms" target="_blank" className="text-brand-600 font-bold hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and acknowledge our{' '}
+            <Link href="/returns" target="_blank" className="text-brand-600 font-bold hover:underline">
+              Return &amp; Refund Policy
+            </Link>{' '}
+            (liquids, cosmetics, personal care, and food items are non-returnable once shipped for health and hygiene reasons).
+          </p>
+
           {/* Clear Pay Now Button */}
           <button
             type="submit"

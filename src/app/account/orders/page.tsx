@@ -73,9 +73,23 @@ export default function CustomerOrdersPage() {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-0">
-      <div className="p-6 border-b border-slate-100">
-        <h1 className="text-xl font-black text-slate-900 tracking-tight">Order History</h1>
-        <p className="text-xs text-slate-500 mt-1">Track, review, and inspect details of all past purchases</p>
+      <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">Order History</h1>
+          <p className="text-xs text-slate-500 mt-1">Track, review, and inspect details of all past purchases</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2 text-[11px] text-slate-600 max-w-md">
+          <span className="font-bold text-slate-800">Order Assistance: </span>
+          Damaged or defective items must be reported within 48 hours of delivery with packaging photos to{' '}
+          <a href="mailto:support@njselectdeals.com" className="text-brand-600 font-bold hover:underline">
+            support@njselectdeals.com
+          </a>
+          . Read our{' '}
+          <Link href="/returns" className="text-brand-600 font-bold hover:underline">
+            Return Policy
+          </Link>
+          .
+        </div>
       </div>
 
       {orders.length > 0 ? (

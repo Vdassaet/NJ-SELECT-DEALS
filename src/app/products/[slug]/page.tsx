@@ -573,9 +573,12 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <p className="font-semibold text-slate-900">30-Day Money-Back Guarantee:</p>
+                  <p className="font-semibold text-slate-900">Health, Hygiene &amp; Safety Standard:</p>
                   <p className="text-slate-500">
-                    If you are not 100% satisfied with your order, return unopened items within 30 days of delivery for a prompt full refund. For damaged or defective goods, contact our support team at support@njselectdeals.com.
+                    To maintain strict consumer safety, hygiene, and product integrity, personal care, beauty, cosmetics, liquids, hair care, and confectionery items are <strong>final sale and non-returnable</strong> once dispatched. We do not accept returns for change of mind or ordering errors.
+                  </p>
+                  <p className="text-slate-500">
+                    <strong>Transit Damage or Defect?</strong> If your item arrived materially damaged, leaking, or defective, contact our customer support team within <strong>48 hours of delivery</strong> at <a href="mailto:support@njselectdeals.com" className="text-brand-600 font-semibold hover:underline">support@njselectdeals.com</a> with photographs of the product, exterior shipping box, and shipping label. Read our complete <Link href="/returns" className="text-brand-600 font-semibold hover:underline">Return &amp; Refund Policy</Link>.
                   </p>
                 </div>
               )}

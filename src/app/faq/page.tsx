@@ -25,8 +25,16 @@ const faqs = [
     a: 'All orders with a merchandise subtotal of $50 or higher automatically receive free standard ground shipping at checkout with no coupon code required.',
   },
   {
-    q: 'What is your return policy?',
-    a: 'We offer a 30-day money-back guarantee. If you are not satisfied with unopened or defective merchandise, simply reach out to support@njselectdeals.com to receive a prepaid return label and prompt refund.',
+    q: 'What is your return and refund policy?',
+    a: 'Due to strict consumer safety, hygiene, and food sanitation standards, all sales of liquids, cosmetics, personal care, hair care, beauty, confectionery, chocolates, and consumable goods are final once shipped. We do not accept returns or issue refunds for change of mind, ordering errors, or subjective dissatisfaction. If an item arrives materially damaged in transit or defective, notify support@njselectdeals.com within 48 hours of delivery with photographic proof.',
+  },
+  {
+    q: 'What should I do if my order arrives damaged, leaking, or broken?',
+    a: 'Contact support@njselectdeals.com within 48 hours of carrier delivery with your Order Number and clear photos of the damaged item, the exterior box, and the shipping label. Please retain all original packaging while we investigate. Based on review, NJ Select Deals may provide a replacement, store credit, or refund as appropriate.',
+  },
+  {
+    q: 'Can I cancel my order after it has been placed?',
+    a: 'Order cancellations are only possible before your order enters warehouse processing, fulfillment, or dispatch. Because we process orders rapidly (often the same day), cancellations cannot be guaranteed once submitted and cannot be processed once an order has shipped.',
   },
   {
     q: 'How can I track my shipment?',
