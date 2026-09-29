@@ -7,6 +7,7 @@ import { X, Star, ShoppingCart, Check, AlertCircle, ExternalLink } from 'lucide-
 import { ProductItem } from '@/lib/types';
 import { formatPrice, calculateDiscount } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
+import { ProductShareButton } from './ProductShareModal';
 
 interface QuickViewModalProps {
   product: ProductItem | null;
@@ -241,7 +242,7 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
             )}
 
             {/* Buttons */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <button
                 type="button"
                 onClick={handleAddToCart}
@@ -251,6 +252,12 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
                 <ShoppingCart className="w-4 h-4" />
                 <span>{isOutOfStock ? 'Out of Stock' : 'Add to Cart'}</span>
               </button>
+
+              <ProductShareButton
+                product={product}
+                variant="icon"
+                className="!p-3 !bg-slate-100 hover:!bg-slate-200 !text-slate-700 !rounded-xl !border-0"
+              />
 
               <Link
                 href={`/products/${product.slug}`}

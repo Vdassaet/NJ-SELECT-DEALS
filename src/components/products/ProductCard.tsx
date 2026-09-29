@@ -8,6 +8,7 @@ import { ProductItem } from '@/lib/types';
 import { formatPrice, calculateDiscount } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { QuickViewModal } from './QuickViewModal';
+import { ProductShareButton } from './ProductShareModal';
 
 interface ProductCardProps {
   product: ProductItem;
@@ -98,6 +99,15 @@ export function ProductCard({ product }: ProductCardProps) {
                 New
               </span>
             )}
+          </div>
+
+          {/* Quick Share Action Button */}
+          <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <ProductShareButton
+              product={product}
+              variant="icon"
+              className="!p-2 !rounded-full !bg-white/95 !backdrop-blur shadow-md hover:!bg-white !border-slate-200/80 hover:scale-105"
+            />
           </div>
 
           {/* Quick View Button (hover reveal on desktop, always accessible) */}

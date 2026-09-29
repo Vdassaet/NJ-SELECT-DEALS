@@ -23,6 +23,7 @@ import { useCart } from '@/context/CartContext';
 import { ProductCard } from '@/components/products/ProductCard';
 import { CountdownTimer } from '@/components/promotions/CountdownTimer';
 import { ProductReviewsSection } from '@/components/reviews/ProductReviewsSection';
+import { ProductShareButton, ProductShareInlineBar } from '@/components/products/ProductShareModal';
 import { generateProductSchema, generateBreadcrumbSchema } from '@/lib/seo';
 import { sanitizeJsonLd } from '@/lib/security-client';
 import { Sparkles, Flame, Tag } from 'lucide-react';
@@ -280,15 +281,22 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         {/* Right: Product Details & Purchase Box (7 cols) */}
         <div className="lg:col-span-6 space-y-6">
           <div>
-            {product.brand && (
-              <p className="text-xs font-bold text-brand-700 uppercase tracking-wider mb-1">
-                {product.brand}
-              </p>
-            )}
-            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 leading-tight">
-              {product.name}
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">SKU: <span className="font-mono text-slate-600">{product.sku}</span></p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                {product.brand && (
+                  <p className="text-xs font-bold text-brand-700 uppercase tracking-wider mb-1">
+                    {product.brand}
+                  </p>
+                )}
+                <h1 className="text-2xl sm:text-4xl font-black text-slate-900 leading-tight">
+                  {product.name}
+                </h1>
+                <p className="text-xs text-slate-400 mt-1">SKU: <span className="font-mono text-slate-600">{product.sku}</span></p>
+              </div>
+              <div className="flex-shrink-0 pt-1">
+                <ProductShareButton product={product} variant="button" />
+              </div>
+            </div>
 
             {/* Rating */}
             <div className="flex items-center space-x-2 mt-3">
@@ -513,6 +521,9 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
               <span>Buy Now</span>
             </button>
           </div>
+
+          {/* Share with Friends Quick Bar */}
+          <ProductShareInlineBar product={product} />
 
           {/* Description */}
           <div className="pt-4 border-t border-slate-100">
