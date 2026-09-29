@@ -96,6 +96,45 @@ export async function getSession(): Promise<UserSession | null> {
 }
 
 /**
+ * Creates a cryptographically signed, one-time password reset token valid for 1 hour.
+ * Encodes the hash suffix of current password so changing the password invalidates the token.
+ */
+export async function createPasswordResetToken(user: { id: string; email: string; passwordHash: string }): Promise<string> {
+  const secretKey = getJwtSecret();
+  const hashPrefix = user.passwordHash.slice(-12);
+  return await new jose.SignJWT({
+    id: user.id,
+    email: user.email.toLowerCase(),
+    hashPrefix,
+    purpose: 'PASSWORD_RESET',
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(secretKey);
+}
+
+/**
+ * Verifies a password reset token signature, expiration, and purpose.
+ */
+export async function verifyPasswordResetToken(token: string): Promise<{ userId: string; email: string; hashPrefix: string } | null> {
+  try {
+    const secretKey = getJwtSecret();
+    const { payload } = await jose.jwtVerify(token, secretKey);
+    if (payload.purpose !== 'PASSWORD_RESET' || !payload.id || !payload.email) {
+      return null;
+    }
+    return {
+      userId: payload.id as string,
+      email: (payload.email as string).toLowerCase(),
+      hashPrefix: (payload.hashPrefix as string) || '',
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Invalidate the provided token or current session cookie.
  */
 export async function invalidateSession(token?: string): Promise<void> {

@@ -536,3 +536,82 @@ export async function sendOrderCancelledEmail(params: {
     metadata: { orderNumber, reason },
   });
 }
+
+/**
+ * 6. Customer Password Reset Email
+ */
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  name: string;
+  resetUrl: string;
+}) {
+  const config = await getStoreEmailConfig();
+  const { to, name, resetUrl } = params;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Your Password</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; padding: 24px 12px; margin: 0; color: #334155;">
+      <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        
+        <!-- Header -->
+        <div style="background-color: #0f172a; padding: 28px 24px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">${config.storeName}</h1>
+          <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">Security & Account Access</p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 32px 28px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Password Reset Request</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+            Hi <strong>${name}</strong>,<br/>
+            We received a request to reset the password for your ${config.storeName} account associated with <strong>${to}</strong>.
+          </p>
+
+          <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+            Click the button below to set a new password. For security, this link expires in <strong>60 minutes</strong>.
+          </p>
+
+          <!-- Button -->
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="background-color: #059669; color: #ffffff; font-weight: 700; font-size: 14px; padding: 14px 28px; text-decoration: none; border-radius: 12px; display: inline-block; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="font-size: 12px; line-height: 1.5; color: #64748b; margin: 24px 0 0 0;">
+            If the button above does not work, copy and paste this link into your browser:<br/>
+            <a href="${resetUrl}" style="color: #059669; word-break: break-all;">${resetUrl}</a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 28px 0;" />
+
+          <p style="font-size: 12px; line-height: 1.5; color: #94a3b8; margin: 0;">
+            If you did not request a password reset, no action is needed. Your account remains safe and your current password will not change.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8;">
+          <p style="margin: 0;">${config.storeName} &bull; ${config.storeAddress}</p>
+          <p style="margin: 4px 0 0 0;">Questions? Contact us at <a href="mailto:${config.storeEmail}" style="color: #64748b;">${config.storeEmail}</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmailWithLog({
+    to,
+    subject: `Reset Your Password - ${config.storeName}`,
+    html,
+    template: 'PASSWORD_RESET',
+    metadata: { recipientName: name, resetUrl },
+  });
+}
+

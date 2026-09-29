@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createPasswordResetToken } from '@/lib/auth';
+import { sendPasswordResetEmail } from '@/lib/email';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { validateOrigin, createSafeErrorResponse, validateEmail } from '@/lib/security';
 import { logSecurityEvent } from '@/lib/security-logger';
@@ -48,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
-      select: { id: true, email: true },
+      select: { id: true, email: true, name: true, passwordHash: true },
     });
 
     logSecurityEvent({
@@ -58,6 +60,25 @@ export async function POST(request: NextRequest) {
       userEmail: cleanEmail,
       ip: getClientIp(request),
     });
+
+    if (user) {
+      const resetToken = await createPasswordResetToken(user);
+      const host = request.headers.get('host');
+      const origin = request.nextUrl.origin;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        (host ? `https://${host}` : origin);
+      const resetUrl = `${baseUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+      // Dispatch reset email via Resend or log for development
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name || 'Valued Customer',
+        resetUrl,
+      });
+
+      console.log(`[PASSWORD RESET DISPATCHED] For: ${user.email} | URL: ${resetUrl}`);
+    }
 
     // For security, always respond with the exact same neutral message regardless of account existence
     // to prevent user enumeration attacks
