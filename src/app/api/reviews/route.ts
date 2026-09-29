@@ -7,6 +7,8 @@ import {
   formatReviewPayload, 
   parseReviewPayload 
 } from '@/lib/review-service';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get('productId');
 
-    if (!productId) {
+    if (!productId || typeof productId !== 'string') {
       return NextResponse.json({ error: 'productId parameter is required' }, { status: 400 });
     }
 
@@ -64,8 +66,7 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error) {
-    console.error('Error fetching product reviews:', error);
-    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch reviews');
   }
 }
 
@@ -74,6 +75,24 @@ export async function GET(request: NextRequest) {
  * Customer submits a review with Verified Purchase requirement
  */
 export async function POST(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
+  // Rate limiting (5 review submissions per minute per IP)
+  const rateLimit = await checkRateLimit(request, {
+    keyPrefix: 'review_submit',
+    limit: 5,
+    windowSeconds: 60,
+  });
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many review attempts. Please wait before trying again.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.reset) } }
+    );
+  }
+
   try {
     const session = await getSession();
     if (!session || !session.id) {
@@ -86,7 +105,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { productId, rating, title, comment, photos } = body;
 
-    if (!productId) {
+    if (!productId || typeof productId !== 'string') {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
@@ -101,6 +120,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const cleanCommentText = comment.trim().slice(0, 2000);
+    const cleanTitle = title && typeof title === 'string' ? title.trim().slice(0, 150) : null;
 
     // 1. Server-side purchase verification: Only customers who purchased can review
     const verification = await verifyCustomerPurchasedProduct(session.id, productId);
@@ -127,11 +149,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Format payload with photos and Verified Purchase mark
+    // Only accept https URLs under 500 chars for photos
     const sanitizedPhotos = Array.isArray(photos)
-      ? photos.filter((p: any) => typeof p === 'string' && p.startsWith('http')).slice(0, 5)
+      ? photos
+          .filter((p: any) => typeof p === 'string' && p.startsWith('https://') && p.length <= 500)
+          .slice(0, 5)
       : [];
 
-    const encodedComment = formatReviewPayload(comment.trim(), {
+    const encodedComment = formatReviewPayload(cleanCommentText, {
       photos: sanitizedPhotos,
       isVerifiedPurchase: true,
       isFlagged: false,
@@ -143,7 +168,7 @@ export async function POST(request: NextRequest) {
         productId,
         userId: session.id,
         rating: Math.round(numericRating),
-        title: title ? title.trim().substring(0, 150) : null,
+        title: cleanTitle,
         comment: encodedComment,
         isPublic: true,
       },
@@ -192,7 +217,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Error submitting review:', error);
-    return NextResponse.json({ error: error.message || 'Failed to submit review' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to submit review');
   }
 }

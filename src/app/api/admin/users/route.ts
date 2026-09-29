@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { createSafeErrorResponse } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,7 +71,6 @@ export async function GET() {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Users fetch error:', error);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch users');
   }
 }

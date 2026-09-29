@@ -4,11 +4,13 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, User, Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { sanitizeRedirectUrl } from '@/lib/security-client';
 
 function RegisterFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') || '/account';
+  const rawRedirectUrl = searchParams.get('redirect');
+  const redirectUrl = sanitizeRedirectUrl(rawRedirectUrl, '/account');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,8 +29,8 @@ function RegisterFormContent() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters.');
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters.');
       return;
     }
 

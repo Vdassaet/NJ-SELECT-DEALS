@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { completePaidOrder, updateOrderPaymentState } from '@/lib/order-service';
 import { PaymentStatus, OrderStatus } from '@prisma/client';
 import Stripe from 'stripe';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,23 +15,37 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event;
 
     // 1. Cryptographic Stripe Webhook Signature Verification
-    if (webhookSecret && !webhookSecret.includes('placeholder')) {
-      if (!signature) {
-        return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
-      }
+    if (!signature) {
+      logSecurityEvent('WEBHOOK_FAILURE', { reason: 'MISSING_SIGNATURE' }, request);
+      return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 });
+    }
 
+    if (!webhookSecret || webhookSecret.includes('placeholder')) {
+      if (process.env.NODE_ENV === 'production') {
+        logSecurityEvent('WEBHOOK_FAILURE', { reason: 'MISSING_SECRET_IN_PRODUCTION' }, request);
+        return NextResponse.json({ error: 'Webhook secret is not configured.' }, { status: 500 });
+      }
+      // In development/testing without live Stripe CLI, require explicit local test secret or fail
+      const devBypassSecret = process.env.DEV_WEBHOOK_BYPASS_TOKEN;
+      const testToken = request.headers.get('x-njd-test-secret');
+      if (devBypassSecret && testToken && testToken === devBypassSecret) {
+        try {
+          event = JSON.parse(rawBody) as Stripe.Event;
+        } catch (err) {
+          return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'STRIPE_WEBHOOK_SECRET must be configured to process incoming webhooks.' },
+          { status: 400 }
+        );
+      }
+    } else {
       try {
         event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
       } catch (err: any) {
-        console.error('Webhook signature verification failed:', err.message);
-        return NextResponse.json({ error: `Webhook signature verification failed: ${err.message}` }, { status: 400 });
-      }
-    } else {
-      // In development test environment without configured secret, parse payload
-      try {
-        event = JSON.parse(rawBody) as Stripe.Event;
-      } catch (err) {
-        return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+        logSecurityEvent('WEBHOOK_FAILURE', { reason: 'INVALID_SIGNATURE', message: err?.message }, request);
+        return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 400 });
       }
     }
 
@@ -53,6 +68,13 @@ export async function POST(request: NextRequest) {
                 ? session.payment_intent
                 : session.payment_intent?.id || null;
 
+            let appliedPromotionIds: string[] | null = null;
+            if (metadata.appliedPromotionIds) {
+              try {
+                appliedPromotionIds = JSON.parse(metadata.appliedPromotionIds);
+              } catch {}
+            }
+
             await completePaidOrder({
               stripePaymentId: paymentIntentId,
               stripeSessionId: session.id,
@@ -66,6 +88,8 @@ export async function POST(request: NextRequest) {
               tax: parseFloat(metadata.tax || '0'),
               total: parseFloat(metadata.total || '0'),
               notes: metadata.notes || null,
+              couponCode: metadata.couponCode || null,
+              appliedPromotionIds,
             });
             console.log(`[STRIPE WEBHOOK] Order completed for session ${session.id}`);
           }
@@ -133,9 +157,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error('Stripe webhook handling error:', error);
+    logSecurityEvent('WEBHOOK_FAILURE', { error: error?.message || 'UNKNOWN' }, request);
     return NextResponse.json(
-      { error: error.message || 'Webhook processing failed' },
+      { error: 'Webhook processing failed' },
       { status: 500 }
     );
   }

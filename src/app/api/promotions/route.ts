@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { PromotionType, PromotionScope } from '@/lib/types';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { validatePrice, validatePercentage } from '@/lib/validation';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,14 +108,17 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching promotions:', error);
-    return NextResponse.json({ error: 'Failed to fetch promotions' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch promotions');
   }
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const body = await request.json();
     const {
@@ -161,6 +167,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let validatedDiscount: number | null = null;
+    if (discountValue !== undefined && discountValue !== null && discountValue !== '') {
+      const dType = discountType || (type === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED_AMOUNT');
+      if (dType === 'PERCENTAGE') {
+        const pCheck = validatePercentage(discountValue, 0.01, 100);
+        if (!pCheck.valid) return NextResponse.json({ error: pCheck.error }, { status: 400 });
+        validatedDiscount = pCheck.value!;
+      } else {
+        const prCheck = validatePrice(discountValue, 0.01, 100000);
+        if (!prCheck.valid) return NextResponse.json({ error: prCheck.error }, { status: 400 });
+        validatedDiscount = prCheck.value!;
+      }
+    }
+
+    let validatedSalePrice: number | null = null;
+    if (salePrice !== undefined && salePrice !== null && salePrice !== '') {
+      const spCheck = validatePrice(salePrice, 0.01);
+      if (!spCheck.valid) return NextResponse.json({ error: spCheck.error }, { status: 400 });
+      validatedSalePrice = spCheck.value!;
+    }
+
+    let validatedMinSubtotal: number | null = null;
+    if (minOrderSubtotal !== undefined && minOrderSubtotal !== null && minOrderSubtotal !== '') {
+      const msCheck = validatePrice(minOrderSubtotal, 0);
+      if (!msCheck.valid) return NextResponse.json({ error: msCheck.error }, { status: 400 });
+      validatedMinSubtotal = msCheck.value!;
+    }
+
     const startDateTime = startDate ? new Date(startDate) : new Date();
     const endDateTime = endDate ? new Date(endDate) : null;
 
@@ -175,11 +209,11 @@ export async function POST(request: NextRequest) {
         type: type as PromotionType,
         scope: (scope as PromotionScope) || 'PRODUCT',
         discountType: discountType || (type === 'PERCENTAGE' ? 'PERCENTAGE' : 'FIXED_AMOUNT'),
-        discountValue: discountValue ? parseFloat(discountValue) : null,
-        salePrice: salePrice ? parseFloat(salePrice) : null,
+        discountValue: validatedDiscount,
+        salePrice: validatedSalePrice,
         couponCode: cleanCouponCode,
         categoryId: categoryId || null,
-        minOrderSubtotal: minOrderSubtotal ? parseFloat(minOrderSubtotal) : null,
+        minOrderSubtotal: validatedMinSubtotal,
         minQuantity: minQuantity ? parseInt(minQuantity) : null,
         buyQuantity: buyQuantity ? parseInt(buyQuantity) : null,
         getQuantity: getQuantity ? parseInt(getQuantity) : null,
@@ -206,12 +240,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'CREATE_PROMOTION', promotionId: promotion.id, name: promotion.name, type: promotion.type },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ promotion }, { status: 201 });
   } catch (error: any) {
-    console.error('Error creating promotion:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to create promotion.' },
-      { status: 500 }
-    );
+    if (error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (error.message === 'FORBIDDEN') {
+      return NextResponse.json({ error: 'Administrator access required' }, { status: 403 });
+    }
+    return createSafeErrorResponse(error, 'Failed to create promotion.');
   }
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,14 +26,17 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ categories });
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json({ categories: [], error: 'Failed to fetch categories' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch categories');
   }
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const body = await request.json();
     const { name, slug, description, image, isActive, sortOrder } = body;
@@ -62,12 +67,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'CREATE_CATEGORY', categoryId: category.id, name: category.name },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, category });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
-    console.error('Error creating category:', error);
-    return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to create category');
   }
 }

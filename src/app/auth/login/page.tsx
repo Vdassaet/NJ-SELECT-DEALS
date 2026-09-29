@@ -4,11 +4,13 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { sanitizeRedirectUrl } from '@/lib/security-client';
 
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') || '/account';
+  const rawRedirectUrl = searchParams.get('redirect');
+  const redirectUrl = sanitizeRedirectUrl(rawRedirectUrl, '/account');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

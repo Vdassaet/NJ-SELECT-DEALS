@@ -1,6 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { generateSEOMetadata, generateBreadcrumbSchema } from '@/lib/seo';
+import { sanitizeJsonLd } from '@/lib/security-client';
 import { Truck, CheckCircle2, ShieldCheck, MapPin } from 'lucide-react';
 
 export const metadata: Metadata = generateSEOMetadata({
@@ -20,7 +21,7 @@ export default function ShippingPage() {
     <div className="store-container py-12 max-w-4xl space-y-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(breadcrumbs) }}
       />
 
       <div className="text-center space-y-3">

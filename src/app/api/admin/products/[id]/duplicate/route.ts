@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,8 +10,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const original = await prisma.product.findUnique({
       where: { id: params.id },
@@ -71,12 +77,18 @@ export async function POST(
       },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'DUPLICATE_PRODUCT', sourceProductId: params.id, newProductId: duplicated.id, newSku: duplicated.sku },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, product: duplicated });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Duplicate product error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to duplicate product' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to duplicate product');
   }
 }

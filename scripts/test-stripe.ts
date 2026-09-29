@@ -158,7 +158,7 @@ async function runStripePaymentAudit() {
     });
 
     assert(Boolean(createdOrder && createdOrder.id), 'Order successfully created in database');
-    assert(/^ORD-\d{8}-\d{4}$/.test(createdOrder.orderNumber), `Order number matches ORD-YYYYMMDD-XXXX (${createdOrder.orderNumber})`);
+    assert(/^ORD-\d{8}-[0-9A-Z]{4,8}$/.test(createdOrder.orderNumber), `Order number matches ORD-YYYYMMDD-XXXX (${createdOrder.orderNumber})`);
     assert(createdOrder.paymentStatus === PaymentStatus.PAID, 'Payment status set to PAID');
     assert(createdOrder.status === OrderStatus.PROCESSING, 'Order status set to PROCESSING');
     assert(createdOrder.stripePaymentId === testPaymentId, 'Stripe Payment ID saved correctly');

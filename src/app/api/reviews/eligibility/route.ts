@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { verifyCustomerPurchasedProduct } from '@/lib/review-service';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { createSafeErrorResponse } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +11,19 @@ export const dynamic = 'force-dynamic';
  * Checks whether the currently logged in user is eligible to review the product
  */
 export async function GET(request: NextRequest) {
+  const rateLimit = await checkRateLimit(request, {
+    keyPrefix: 'review_eligibility',
+    limit: 60,
+    windowSeconds: 60,
+  });
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.reset) } }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get('productId');
@@ -38,7 +53,6 @@ export async function GET(request: NextRequest) {
       purchaseDate: verification.purchaseDate,
     });
   } catch (error) {
-    console.error('Error checking review eligibility:', error);
-    return NextResponse.json({ error: 'Failed to verify review eligibility' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to verify review eligibility');
   }
 }

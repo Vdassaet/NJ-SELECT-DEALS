@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isPromotionActive } from '@/lib/pricing-engine';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { createSafeErrorResponse } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const rateLimit = await checkRateLimit(request, {
+    keyPrefix: 'flash_deals',
+    limit: 60,
+    windowSeconds: 60,
+  });
+
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.reset) } }
+    );
+  }
+
   try {
     const now = new Date();
 
@@ -93,7 +108,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ flashDeals });
   } catch (error) {
-    console.error('Error fetching flash deals:', error);
-    return NextResponse.json({ error: 'Failed to fetch flash deals' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch flash deals');
   }
 }

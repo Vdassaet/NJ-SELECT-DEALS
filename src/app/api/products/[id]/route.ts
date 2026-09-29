@@ -5,6 +5,9 @@ import { requireAdmin } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
 import { getProductActivePromotions } from '@/lib/pricing-engine';
 import { getProductRecommendations } from '@/lib/recommendation-engine';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { validatePrice, validateInventoryCount } from '@/lib/validation';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export async function GET(
   request: NextRequest,
@@ -47,8 +50,7 @@ export async function GET(
       recommendedProducts: recommendations.recommendedProducts,
     });
   } catch (error) {
-    console.error('Error fetching product:', error);
-    return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch product');
   }
 }
 
@@ -56,8 +58,12 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const body = await request.json();
     const {
@@ -85,12 +91,30 @@ export async function PUT(
     if (sku !== undefined) updateData.sku = sku.trim();
     if (brand !== undefined) updateData.brand = brand ? brand.trim() : null;
     if (description !== undefined) updateData.description = description.trim();
-    if (price !== undefined) updateData.price = parseFloat(price);
-    if (salePrice !== undefined) {
-      updateData.salePrice = salePrice !== null && salePrice !== '' ? parseFloat(salePrice) : null;
+    if (price !== undefined) {
+      const prCheck = validatePrice(price, 0.01);
+      if (!prCheck.valid) return NextResponse.json({ error: prCheck.error }, { status: 400 });
+      updateData.price = prCheck.value!;
     }
-    if (inventory !== undefined) updateData.inventory = parseInt(inventory, 10);
-    if (lowStockThreshold !== undefined) updateData.lowStockThreshold = parseInt(lowStockThreshold, 10);
+    if (salePrice !== undefined) {
+      if (salePrice !== null && salePrice !== '') {
+        const spCheck = validatePrice(salePrice, 0.01);
+        if (!spCheck.valid) return NextResponse.json({ error: spCheck.error }, { status: 400 });
+        updateData.salePrice = spCheck.value!;
+      } else {
+        updateData.salePrice = null;
+      }
+    }
+    if (inventory !== undefined) {
+      const invCheck = validateInventoryCount(inventory);
+      if (!invCheck.valid) return NextResponse.json({ error: invCheck.error }, { status: 400 });
+      updateData.inventory = invCheck.value!;
+    }
+    if (lowStockThreshold !== undefined) {
+      const lCheck = validateInventoryCount(lowStockThreshold, 100000);
+      if (!lCheck.valid) return NextResponse.json({ error: lCheck.error }, { status: 400 });
+      updateData.lowStockThreshold = lCheck.value!;
+    }
     if (weight !== undefined) updateData.weight = weight ? parseFloat(weight) : null;
     if (isFeatured !== undefined) updateData.isFeatured = Boolean(isFeatured);
     if (isNewArrival !== undefined) updateData.isNewArrival = Boolean(isNewArrival);
@@ -139,13 +163,19 @@ export async function PUT(
       },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'UPDATE_PRODUCT', productId: updated.id, sku: updated.sku, name: updated.name },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, product: updated });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Error updating product:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update product' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to update product');
   }
 }
 
@@ -153,19 +183,29 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     await prisma.product.delete({
       where: { id: params.id },
     });
+
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'DELETE_PRODUCT', productId: params.id },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
 
     return NextResponse.json({ success: true, message: 'Product deleted successfully' });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Error deleting product:', error);
-    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to delete product');
   }
 }

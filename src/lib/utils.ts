@@ -48,11 +48,13 @@ export function calculateDiscount(price: number, salePrice: number | null): numb
   return Math.round(((price - salePrice) / price) * 100);
 }
 
+import crypto from 'crypto';
+
 export function generateOrderNumber(): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const randomSuffix = crypto.randomBytes(4).toString('hex').toUpperCase();
   return `ORD-${year}${month}${day}-${randomSuffix}`;
 }

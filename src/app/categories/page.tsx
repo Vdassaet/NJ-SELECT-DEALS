@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { generateSEOMetadata, generateBreadcrumbSchema } from '@/lib/seo';
+import { sanitizeJsonLd } from '@/lib/security-client';
 import { Sparkles, ArrowRight, Package } from 'lucide-react';
 
 export const revalidate = 3600;
@@ -48,7 +49,7 @@ export default async function CategoriesPage() {
     <div className="store-container py-10 space-y-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(breadcrumbs) }}
       />
 
       <div className="text-center max-w-2xl mx-auto space-y-2">

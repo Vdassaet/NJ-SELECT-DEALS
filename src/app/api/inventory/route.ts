@@ -7,6 +7,9 @@ import {
   getRecentInventoryLogs,
   recordInventoryLog,
 } from '@/lib/inventory-service';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { validateInventoryCount, validatePrice } from '@/lib/validation';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,14 +63,17 @@ export async function GET() {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Inventory fetch error:', error);
-    return NextResponse.json({ error: 'Failed to fetch inventory' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch inventory');
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
     const session = await getSession();
 
     const body = await request.json();
@@ -80,8 +86,8 @@ export async function PATCH(request: NextRequest) {
       reason,
     } = body;
 
-    if (!productId) {
-      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
+    if (!productId || typeof productId !== 'string') {
+      return NextResponse.json({ error: 'Valid Product ID is required' }, { status: 400 });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -108,21 +114,41 @@ export async function PATCH(request: NextRequest) {
       const updateData: any = {};
 
       if (inventory !== undefined) {
-        newQty = Math.max(0, parseInt(inventory, 10));
+        const invCheck = validateInventoryCount(inventory);
+        if (!invCheck.valid) {
+          throw new Error(invCheck.error);
+        }
+        newQty = invCheck.value!;
         diff = newQty - prevQty;
         updateData.inventory = newQty;
       } else if (adjustment !== undefined) {
-        diff = parseInt(adjustment, 10);
+        const adj = Number(adjustment);
+        if (!Number.isInteger(adj) || isNaN(adj) || adj < -1_000_000 || adj > 1_000_000) {
+          throw new Error('Adjustment must be an integer between -1,000,000 and 1,000,000');
+        }
+        diff = adj;
         newQty = Math.max(0, prevQty + diff);
         updateData.inventory = newQty;
       }
 
       if (lowStockThreshold !== undefined) {
-        updateData.lowStockThreshold = Math.max(0, parseInt(lowStockThreshold, 10));
+        const thresh = Number(lowStockThreshold);
+        if (!Number.isInteger(thresh) || isNaN(thresh) || thresh < 0 || thresh > 100_000) {
+          throw new Error('Low stock threshold must be an integer between 0 and 100,000');
+        }
+        updateData.lowStockThreshold = thresh;
       }
 
       if (costPrice !== undefined) {
-        updateData.costPrice = costPrice === null || costPrice === '' ? null : Math.max(0, parseFloat(costPrice));
+        if (costPrice === null || costPrice === '') {
+          updateData.costPrice = null;
+        } else {
+          const costCheck = validatePrice(costPrice, 0, 1_000_000);
+          if (!costCheck.valid) {
+            throw new Error(costCheck.error);
+          }
+          updateData.costPrice = costCheck.value!;
+        }
       }
 
       const updatedProduct = await tx.product.update({
@@ -149,9 +175,9 @@ export async function PATCH(request: NextRequest) {
           previousQuantity: prevQty,
           newQuantity: newQty,
           difference: diff,
-          reason: reason || (diff > 0 ? 'RESTOCK' : 'MANUAL_ADJUSTMENT'),
-          performedBy: session?.email || 'ADMIN',
-          userId: session?.id || null,
+          reason: reason ? String(reason).slice(0, 100) : (diff > 0 ? 'RESTOCK' : 'MANUAL_ADJUSTMENT'),
+          performedBy: session?.email || adminUser.email || 'ADMIN',
+          userId: session?.id || adminUser.id || null,
         });
       }
 
@@ -161,12 +187,21 @@ export async function PATCH(request: NextRequest) {
       };
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'UPDATE_INVENTORY', productId, previousQuantity: result.log?.previousQuantity, newQuantity: result.product.inventory },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, ...result });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Inventory update error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update inventory' }, { status: 500 });
+    if (error.message && (error.message.includes('must be') || error.message === 'Product not found')) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    return createSafeErrorResponse(error, 'Failed to update inventory');
   }
 }

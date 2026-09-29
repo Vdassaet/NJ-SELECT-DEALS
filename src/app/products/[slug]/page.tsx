@@ -24,6 +24,7 @@ import { ProductCard } from '@/components/products/ProductCard';
 import { CountdownTimer } from '@/components/promotions/CountdownTimer';
 import { ProductReviewsSection } from '@/components/reviews/ProductReviewsSection';
 import { generateProductSchema, generateBreadcrumbSchema } from '@/lib/seo';
+import { sanitizeJsonLd } from '@/lib/security-client';
 import { Sparkles, Flame, Tag } from 'lucide-react';
 
 export default function ProductDetailPage({ params }: { params: { slug: string } }) {
@@ -212,11 +213,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
       {/* Product & Breadcrumb Schema.org Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(productSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeJsonLd(breadcrumbSchema) }}
       />
       {/* Breadcrumb */}
       <nav className="flex items-center space-x-2 text-xs font-semibold text-slate-500">

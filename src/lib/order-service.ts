@@ -7,6 +7,8 @@ import {
   OrderEmailPayload,
 } from '@/lib/email';
 import { PaymentStatus, OrderStatus } from '@prisma/client';
+import { calculateOrderPricing } from '@/lib/pricing-engine';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export interface FulfillmentItem {
   productId: string;
@@ -42,6 +44,8 @@ export interface CompleteOrderInput {
   tax: number;
   total: number;
   notes?: string | null;
+  couponCode?: string | null;
+  appliedPromotionIds?: string[] | null;
 }
 
 /**
@@ -84,118 +88,219 @@ export async function completePaidOrder(input: CompleteOrderInput) {
     }
   }
 
+  // Step 3: Authoritative Database Pricing Calculation
+  // Ground truth recalculation prevents any client total/price tampering
+  const authoritativePricing = await calculateOrderPricing(
+    input.items.map((i) => ({ productId: i.productId, quantity: i.quantity, variantId: i.variantId })),
+    input.couponCode
+  );
+
+  const subtotal = authoritativePricing.subtotal;
+  const discount = authoritativePricing.totalSavings;
+  const shippingCost = authoritativePricing.shippingCost;
+  const tax = authoritativePricing.tax;
+  const total = authoritativePricing.total;
+
+  const itemMap = new Map(authoritativePricing.itemBreakdowns.map((b) => [b.productId, b]));
+  const orderItemData = input.items.map((item) => {
+    const breakdown = itemMap.get(item.productId);
+    const effectivePrice = breakdown ? breakdown.effectiveUnitPrice : item.price;
+    return {
+      productId: item.productId,
+      variantId: item.variantId || null,
+      productName: item.name,
+      productImage: item.image || null,
+      price: effectivePrice,
+      quantity: item.quantity,
+      total: Math.round(effectivePrice * item.quantity * 100) / 100,
+    };
+  });
+
   const orderNumber = generateOrderNumber();
 
-  // Step 3: Atomic database transaction
-  const order = await prisma.$transaction(async (tx) => {
-    // 3a. Atomically verify and decrement inventory
-    for (const item of input.items) {
-      const updateResult = await tx.product.updateMany({
-        where: {
-          id: item.productId,
-          inventory: {
-            gte: item.quantity,
+  // Step 4: Atomic database transaction with race condition handling
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      // 4a. Atomically verify and decrement inventory
+      for (const item of input.items) {
+        const updateResult = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            inventory: {
+              gte: item.quantity,
+            },
+          },
+          data: {
+            inventory: {
+              decrement: item.quantity,
+            },
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new Error('Sorry, one or more products are no longer available in the requested quantity.');
+        }
+
+        const dbProd = productMap.get(item.productId);
+        if (dbProd) {
+          await tx.inventoryLog.create({
+            data: {
+              productId: item.productId,
+              sku: dbProd.sku,
+              previousQuantity: dbProd.inventory,
+              newQuantity: dbProd.inventory - item.quantity,
+              difference: -item.quantity,
+              reason: 'ORDER_PLACED',
+              orderNumber,
+              performedBy: input.guestEmail || 'CUSTOMER',
+              userId: input.userId || null,
+            },
+          });
+        }
+      }
+
+      // 4b. Create Order with authoritative financial snapshot
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          ...(input.userId ? { user: { connect: { id: input.userId } } } : {}),
+          guestEmail: input.userId ? null : input.guestEmail.trim().toLowerCase(),
+          status: OrderStatus.PROCESSING,
+          paymentStatus: PaymentStatus.PAID,
+          subtotal,
+          discount,
+          shippingCost,
+          tax,
+          total,
+          stripePaymentId: input.stripePaymentId || null,
+          stripeSessionId: input.stripeSessionId || null,
+          shippingName: input.shippingAddress.fullName.trim(),
+          shippingStreet: input.shippingAddress.street.trim(),
+          shippingApartment: input.shippingAddress.apartment?.trim() || null,
+          shippingCity: input.shippingAddress.city.trim(),
+          shippingState: input.shippingAddress.state.trim(),
+          shippingPostalCode: input.shippingAddress.postalCode.trim(),
+          shippingCountry: input.shippingAddress.country || 'US',
+          shippingPhone: input.shippingAddress.phone?.trim() || null,
+          notes: input.notes?.trim() || null,
+          items: {
+            create: orderItemData,
+          },
+          payments: {
+            create: {
+              amount: total,
+              currency: 'USD',
+              provider: 'STRIPE',
+              transactionId: input.stripePaymentId || input.stripeSessionId || null,
+              status: PaymentStatus.PAID,
+            },
           },
         },
-        data: {
-          inventory: {
-            decrement: item.quantity,
-          },
+        include: {
+          items: true,
+          payments: true,
         },
       });
 
-      if (updateResult.count === 0) {
-        throw new Error('Sorry, one or more products are no longer available in the requested quantity.');
-      }
-
-      const dbProd = productMap.get(item.productId);
-      if (dbProd) {
-        await tx.inventoryLog.create({
+      // 4c. Optional address persistence for logged-in customers
+      if (input.userId && input.shippingAddress.saveAddress) {
+        await tx.address.create({
           data: {
-            productId: item.productId,
-            sku: dbProd.sku,
-            previousQuantity: dbProd.inventory,
-            newQuantity: dbProd.inventory - item.quantity,
-            difference: -item.quantity,
-            reason: 'ORDER_PLACED',
-            orderNumber,
-            performedBy: input.guestEmail || 'CUSTOMER',
-            userId: input.userId || null,
+            userId: input.userId,
+            fullName: input.shippingAddress.fullName.trim(),
+            street: input.shippingAddress.street.trim(),
+            apartment: input.shippingAddress.apartment?.trim() || null,
+            city: input.shippingAddress.city.trim(),
+            state: input.shippingAddress.state.trim(),
+            postalCode: input.shippingAddress.postalCode.trim(),
+            country: input.shippingAddress.country || 'US',
+            phone: input.shippingAddress.phone?.trim() || null,
+            isDefault: true,
           },
         });
       }
-    }
 
-    // 3b. Create Order with complete financial, address, and Stripe audit snapshots
-    const newOrder = await tx.order.create({
-      data: {
-        orderNumber,
-        ...(input.userId ? { user: { connect: { id: input.userId } } } : {}),
-        guestEmail: input.userId ? null : input.guestEmail.trim().toLowerCase(),
-        status: OrderStatus.PROCESSING,
-        paymentStatus: PaymentStatus.PAID,
-        subtotal: input.subtotal,
-        discount: input.discount,
-        shippingCost: input.shippingCost,
-        tax: input.tax,
-        total: input.total,
-        stripePaymentId: input.stripePaymentId || null,
-        stripeSessionId: input.stripeSessionId || null,
-        shippingName: input.shippingAddress.fullName.trim(),
-        shippingStreet: input.shippingAddress.street.trim(),
-        shippingApartment: input.shippingAddress.apartment?.trim() || null,
-        shippingCity: input.shippingAddress.city.trim(),
-        shippingState: input.shippingAddress.state.trim(),
-        shippingPostalCode: input.shippingAddress.postalCode.trim(),
-        shippingCountry: input.shippingAddress.country || 'US',
-        shippingPhone: input.shippingAddress.phone?.trim() || null,
-        notes: input.notes?.trim() || null,
-        items: {
-          create: input.items.map((item) => ({
-            productId: item.productId,
-            variantId: item.variantId || null,
-            productName: item.name,
-            productImage: item.image || null,
-            price: item.price,
-            quantity: item.quantity,
-            total: item.price * item.quantity,
-          })),
-        },
-        payments: {
-          create: {
-            amount: input.total,
-            currency: 'USD',
-            provider: 'STRIPE',
-            transactionId: input.stripePaymentId || input.stripeSessionId || null,
-            status: PaymentStatus.PAID,
-          },
-        },
-      },
-      include: {
-        items: true,
-        payments: true,
-      },
+      // 4d. Atomically record Promotion & Coupon usage upon successful paid order
+      if (input.appliedPromotionIds && input.appliedPromotionIds.length > 0) {
+        for (const promoId of input.appliedPromotionIds) {
+          try {
+            if (promoId.startsWith('coupon_')) {
+              const legacyId = promoId.replace('coupon_', '');
+              await tx.coupon.update({
+                where: { id: legacyId },
+                data: { usedCount: { increment: 1 } },
+              });
+            } else {
+              await tx.promotion.update({
+                where: { id: promoId },
+                data: { usedCount: { increment: 1 } },
+              });
+            }
+          } catch (promoErr) {
+            console.warn(`Could not increment usedCount for promotion ${promoId}:`, promoErr);
+          }
+        }
+      } else if (input.couponCode) {
+        const cleanCode = input.couponCode.trim().toUpperCase();
+        try {
+          const promo = await tx.promotion.findUnique({ where: { couponCode: cleanCode } });
+          if (promo) {
+            await tx.promotion.update({
+              where: { id: promo.id },
+              data: { usedCount: { increment: 1 } },
+            });
+          } else {
+            const legacy = await tx.coupon.findUnique({ where: { code: cleanCode } });
+            if (legacy) {
+              await tx.coupon.update({
+                where: { id: legacy.id },
+                data: { usedCount: { increment: 1 } },
+              });
+            }
+          }
+        } catch (couponErr) {
+          console.warn(`Could not increment usedCount for coupon code ${cleanCode}:`, couponErr);
+        }
+      }
+
+      return newOrder;
     });
-
-    // 3c. Optional address persistence for logged-in customers
-    if (input.userId && input.shippingAddress.saveAddress) {
-      await tx.address.create({
-        data: {
-          userId: input.userId,
-          fullName: input.shippingAddress.fullName.trim(),
-          street: input.shippingAddress.street.trim(),
-          apartment: input.shippingAddress.apartment?.trim() || null,
-          city: input.shippingAddress.city.trim(),
-          state: input.shippingAddress.state.trim(),
-          postalCode: input.shippingAddress.postalCode.trim(),
-          country: input.shippingAddress.country || 'US',
-          phone: input.shippingAddress.phone?.trim() || null,
-          isDefault: true,
-        },
-      });
+  } catch (txErr: any) {
+    // If unique constraint violated because concurrent webhook / request already completed this session
+    if (txErr?.code === 'P2002' || String(txErr?.message).includes('Unique constraint')) {
+      if (input.stripePaymentId || input.stripeSessionId) {
+        const existing = await prisma.order.findFirst({
+          where: {
+            OR: [
+              ...(input.stripePaymentId ? [{ stripePaymentId: input.stripePaymentId }] : []),
+              ...(input.stripeSessionId ? [{ stripeSessionId: input.stripeSessionId }] : []),
+            ],
+          },
+          include: {
+            items: true,
+            payments: true,
+          },
+        });
+        if (existing) return existing;
+      }
     }
+    throw txErr;
+  }
 
-    return newOrder;
+  // Step 5: Security Audit Log
+  logSecurityEvent({
+    type: 'PAYMENT_EVENT',
+    action: 'ORDER_COMPLETED',
+    userId: order.userId,
+    userEmail: input.guestEmail,
+    resourceId: order.id,
+    details: {
+      orderNumber: order.orderNumber,
+      total: order.total,
+      stripePaymentId: input.stripePaymentId,
+      stripeSessionId: input.stripeSessionId,
+    },
   });
 
   // Step 4: Dispatch transactional emails (Customer Confirmation + Admin New Order Notification)
@@ -343,6 +448,20 @@ export async function updateOrderPaymentState(
       console.error('Non-critical: Order cancellation email failed:', cancelErr);
     }
   }
+
+  logSecurityEvent({
+    type: 'PAYMENT_EVENT',
+    action: 'ORDER_PAYMENT_STATE_UPDATED',
+    userId: existing.userId,
+    userEmail: existing.guestEmail,
+    resourceId: existing.id,
+    details: {
+      orderNumber: existing.orderNumber,
+      previousPaymentStatus: existing.paymentStatus,
+      newPaymentStatus: paymentStatus,
+      newOrderStatus: orderStatus,
+    },
+  });
 
   return existing;
 }

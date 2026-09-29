@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
+import { createSafeErrorResponse } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -183,7 +184,6 @@ export async function GET(request: NextRequest) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Reports generation error:', error);
-    return NextResponse.json({ error: 'Failed to generate reports' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to generate reports');
   }
 }

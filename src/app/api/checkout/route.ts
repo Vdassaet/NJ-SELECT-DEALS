@@ -3,27 +3,66 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { generateOrderNumber } from '@/lib/utils';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { validateOrigin, validateQuantity, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export async function POST(request: NextRequest) {
+  // CSRF Origin validation
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
+  // Rate limiting
+  const rateLimitResult = await checkRateLimit(request, {
+    keyPrefix: 'checkout_direct',
+    limit: 10,
+    windowSeconds: 60,
+  });
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many checkout attempts. Please wait before trying again.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimitResult.reset) } }
+    );
+  }
+
   try {
     const session = await getSession();
     const body = await request.json();
     const { items, shippingAddress, guestEmail, notes } = body;
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'Your cart is empty.' }, { status: 400 });
+    if (!items || !Array.isArray(items) || items.length === 0 || items.length > 50) {
+      return NextResponse.json({ error: 'Your cart is invalid or empty.' }, { status: 400 });
     }
 
-    if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.street || !shippingAddress.city || !shippingAddress.state || !shippingAddress.postalCode) {
+    if (!shippingAddress || typeof shippingAddress !== 'object' ||
+        !shippingAddress.fullName || !shippingAddress.street ||
+        !shippingAddress.city || !shippingAddress.state || !shippingAddress.postalCode) {
       return NextResponse.json({ error: 'Please provide complete shipping address details.' }, { status: 400 });
     }
 
-    if (!session && (!guestEmail || !guestEmail.includes('@'))) {
+    if (!session && (!guestEmail || typeof guestEmail !== 'string' || !guestEmail.includes('@') || guestEmail.length > 255)) {
       return NextResponse.json({ error: 'A valid email address is required to place an order.' }, { status: 400 });
     }
 
-    // Step 1: Validate stock for each product in database
-    const productIds = items.map((i: any) => i.id);
+    // Step 1: Validate stock and integer quantities for each product in database
+    const validatedItems: { id: string; quantity: number; variantId?: string }[] = [];
+    for (const item of items) {
+      if (!item || typeof item.id !== 'string') {
+        return NextResponse.json({ error: 'Invalid item data in cart.' }, { status: 400 });
+      }
+      const qtyCheck = validateQuantity(item.quantity);
+      if (!qtyCheck.valid) {
+        return NextResponse.json({ error: 'Invalid item quantity. Must be an integer between 1 and 99.' }, { status: 400 });
+      }
+      validatedItems.push({
+        id: item.id,
+        quantity: qtyCheck.value,
+        variantId: typeof item.variantId === 'string' ? item.variantId : undefined,
+      });
+    }
+
+    const productIds = validatedItems.map((i) => i.id);
     const dbProducts = await prisma.product.findMany({
       where: { id: { in: productIds } },
       include: {
@@ -36,10 +75,10 @@ export async function POST(request: NextRequest) {
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
-    for (const item of items) {
+    for (const item of validatedItems) {
       const product = productMap.get(item.id);
       if (!product) {
-        return NextResponse.json({ error: `Product ID ${item.id} not found.` }, { status: 400 });
+        return NextResponse.json({ error: `Product not found.` }, { status: 400 });
       }
 
       if (!product.isActive) {
@@ -56,11 +95,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 2: Calculate financial amounts
+    // Step 2: Calculate financial amounts using server-side database prices
     let subtotal = 0;
     let discount = 0;
 
-    const orderItemData = items.map((item: any) => {
+    const orderItemData = validatedItems.map((item) => {
       const product = productMap.get(item.id)!;
       const effectivePrice =
         product.salePrice !== null && product.salePrice < product.price
@@ -93,7 +132,9 @@ export async function POST(request: NextRequest) {
 
     const orderNumber = generateOrderNumber();
 
-    // Step 3: Atomic database transaction: Create Order + OrderItems + Decrement Inventory
+    // Step 3: Atomic database transaction: Create Order + OrderItems
+    // NOTE: Inventory is NOT decremented here. Inventory is decremented only upon confirmed payment
+    // in completePaidOrder (Stripe webhook / verified payment session) to prevent denial-of-inventory attacks.
     const order = await prisma.$transaction(async (tx) => {
       // Create the order
       const newOrder = await tx.order.create({
@@ -107,15 +148,15 @@ export async function POST(request: NextRequest) {
           discount,
           shippingCost,
           total,
-          shippingName: shippingAddress.fullName.trim(),
-          shippingStreet: shippingAddress.street.trim(),
-          shippingApartment: shippingAddress.apartment ? shippingAddress.apartment.trim() : null,
-          shippingCity: shippingAddress.city.trim(),
-          shippingState: shippingAddress.state.trim(),
-          shippingPostalCode: shippingAddress.postalCode.trim(),
-          shippingCountry: shippingAddress.country || 'US',
-          shippingPhone: shippingAddress.phone ? shippingAddress.phone.trim() : null,
-          notes: notes ? notes.trim() : null,
+          shippingName: String(shippingAddress.fullName).slice(0, 100).trim(),
+          shippingStreet: String(shippingAddress.street).slice(0, 200).trim(),
+          shippingApartment: shippingAddress.apartment ? String(shippingAddress.apartment).slice(0, 100).trim() : null,
+          shippingCity: String(shippingAddress.city).slice(0, 100).trim(),
+          shippingState: String(shippingAddress.state).slice(0, 50).trim(),
+          shippingPostalCode: String(shippingAddress.postalCode).slice(0, 20).trim(),
+          shippingCountry: shippingAddress.country ? String(shippingAddress.country).slice(0, 50).trim() : 'US',
+          shippingPhone: shippingAddress.phone ? String(shippingAddress.phone).slice(0, 30).trim() : null,
+          notes: notes ? String(notes).slice(0, 500).trim() : null,
           items: {
             create: orderItemData,
           },
@@ -125,40 +166,19 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Decrement inventory atomically for each product, preventing negative stock under concurrency
-      for (const item of items) {
-        const updateResult = await tx.product.updateMany({
-          where: {
-            id: item.id,
-            inventory: {
-              gte: item.quantity,
-            },
-          },
-          data: {
-            inventory: {
-              decrement: item.quantity,
-            },
-          },
-        });
-
-        if (updateResult.count === 0) {
-          throw new Error(`Insufficient inventory remaining for item ID ${item.id}. Another order may have just claimed it.`);
-        }
-      }
-
-      // If user is logged in and requested saving address, save or update default address
+      // If user is logged in and requested saving address, save address
       if (session && shippingAddress.saveAddress) {
         await tx.address.create({
           data: {
             userId: session.id,
-            fullName: shippingAddress.fullName.trim(),
-            street: shippingAddress.street.trim(),
-            apartment: shippingAddress.apartment ? shippingAddress.apartment.trim() : null,
-            city: shippingAddress.city.trim(),
-            state: shippingAddress.state.trim(),
-            postalCode: shippingAddress.postalCode.trim(),
-            country: shippingAddress.country || 'US',
-            phone: shippingAddress.phone ? shippingAddress.phone.trim() : null,
+            fullName: String(shippingAddress.fullName).slice(0, 100).trim(),
+            street: String(shippingAddress.street).slice(0, 200).trim(),
+            apartment: shippingAddress.apartment ? String(shippingAddress.apartment).slice(0, 100).trim() : null,
+            city: String(shippingAddress.city).slice(0, 100).trim(),
+            state: String(shippingAddress.state).slice(0, 50).trim(),
+            postalCode: String(shippingAddress.postalCode).slice(0, 20).trim(),
+            country: shippingAddress.country ? String(shippingAddress.country).slice(0, 50).trim() : 'US',
+            phone: shippingAddress.phone ? String(shippingAddress.phone).slice(0, 30).trim() : null,
             isDefault: true,
           },
         });
@@ -167,6 +187,19 @@ export async function POST(request: NextRequest) {
       return newOrder;
     });
 
+    logSecurityEvent(
+      'PAYMENT_EVENT',
+      {
+        action: 'DIRECT_ORDER_CREATED',
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        itemCount: order.items?.length || 0,
+      },
+      request,
+      session ? { userId: session.id, role: session.role } : undefined
+    );
+
     return NextResponse.json({
       success: true,
       orderId: order.id,
@@ -174,11 +207,6 @@ export async function POST(request: NextRequest) {
       order,
     });
   } catch (error: any) {
-    console.error('Checkout error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to place order. Please check database connection.' },
-      { status: 500 }
-    );
+    return createSafeErrorResponse(error, 'Failed to place order.');
   }
 }
-

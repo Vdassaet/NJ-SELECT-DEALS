@@ -1,15 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
+import { requireAuth, getVerifiedUser } from '@/lib/auth';
+import { createSafeErrorResponse } from '@/lib/security';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // Rate limiting (30 requests/min)
+  const rateLimitResult = await checkRateLimit(request, {
+    keyPrefix: 'orders_list',
+    limit: 30,
+    windowSeconds: 60,
+  });
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimitResult.reset) } }
+    );
+  }
+
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await requireAuth();
+    const verifiedUser = await getVerifiedUser();
+    const isAdmin = verifiedUser?.role === 'ADMIN';
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -17,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
 
-    if (session.role === 'ADMIN') {
+    if (isAdmin) {
       // Admin can see all orders or filter
       if (status && status !== 'ALL') {
         where.status = status;
@@ -51,9 +65,19 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ orders });
-  } catch (error) {
-    console.error('Error fetching orders:', error);
-    return NextResponse.json({ orders: [], error: 'Failed to fetch orders' }, { status: 500 });
+    // Sanitize internal payment gateway tokens for non-admin customers
+    const sanitizedOrders = isAdmin
+      ? orders
+      : orders.map((order) => {
+          const { stripePaymentId, stripeSessionId, ...safeOrder } = order;
+          return safeOrder;
+        });
+
+    return NextResponse.json({ orders: sanitizedOrders });
+  } catch (error: any) {
+    if (error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    return createSafeErrorResponse(error, 'Failed to fetch orders');
   }
 }

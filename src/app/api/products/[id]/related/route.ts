@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { getProductRecommendations, RecommendationType } from '@/lib/recommendation-engine';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,11 +43,7 @@ export async function GET(
       manualRulesCount,
     });
   } catch (error) {
-    console.error('Error fetching smart product recommendations:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch recommendations' },
-      { status: 500 }
-    );
+    return createSafeErrorResponse(error, 'Failed to fetch recommendations');
   }
 }
 
@@ -61,8 +59,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const { id } = params;
     const body = await request.json();
@@ -142,16 +144,22 @@ export async function POST(
       }
     });
 
+    logSecurityEvent('ADMIN_ACTION', {
+      action: 'UPDATE_PRODUCT_RELATIONS',
+      adminId: adminUser.id,
+      productId: currentProduct.id,
+      count: relationsToInsert.length,
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Product recommendation rules updated successfully.',
       count: relationsToInsert.length,
     });
   } catch (error: any) {
-    console.error('Error saving recommendation rules:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to save recommendation rules' },
-      { status: 500 }
-    );
+    if (error?.message === 'Unauthorized' || error?.message?.includes('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: error.message === 'Unauthorized' ? 401 : 403 });
+    }
+    return createSafeErrorResponse(error, 'Failed to save recommendation rules');
   }
 }

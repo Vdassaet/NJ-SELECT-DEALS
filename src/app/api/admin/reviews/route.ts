@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { parseReviewPayload, formatReviewPayload, calculateRatingStats } from '@/lib/review-service';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,19 +89,22 @@ export async function GET(request: NextRequest) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Reviews admin error:', error);
-    return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch reviews');
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const body = await request.json();
     const { id, isPublic, isFlagged, flagReason } = body;
 
-    if (!id) {
+    if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'Review ID required' }, { status: 400 });
     }
 
@@ -148,24 +153,34 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'UPDATE_REVIEW', reviewId: id, isPublic, isFlagged },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, review: updated });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Review update error:', error);
-    return NextResponse.json({ error: 'Failed to update review' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to update review');
   }
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    if (!id) {
+    if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'Review ID required' }, { status: 400 });
     }
 
@@ -188,6 +203,13 @@ export async function DELETE(request: NextRequest) {
         where: { id: review.productId },
         data: { rating: stats.average, reviewCount: stats.totalCount },
       });
+
+      logSecurityEvent(
+        'ADMIN_ACTION',
+        { action: 'DELETE_REVIEW', reviewId: id, productId: review.productId },
+        request,
+        { userId: adminUser.id, role: adminUser.role }
+      );
     }
 
     return NextResponse.json({ success: true, message: 'Review deleted' });
@@ -195,7 +217,6 @@ export async function DELETE(request: NextRequest) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Review delete error:', error);
-    return NextResponse.json({ error: 'Failed to delete review' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to delete review');
   }
 }

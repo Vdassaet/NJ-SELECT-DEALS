@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export async function GET(
   request: NextRequest,
@@ -24,8 +26,7 @@ export async function GET(
 
     return NextResponse.json({ category });
   } catch (error) {
-    console.error('Error fetching category:', error);
-    return NextResponse.json({ error: 'Failed to fetch category' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch category');
   }
 }
 
@@ -33,8 +34,12 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const body = await request.json();
     const { name, slug, description, image, isActive, sortOrder } = body;
@@ -52,13 +57,19 @@ export async function PUT(
       data,
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'UPDATE_CATEGORY', categoryId: updated.id, name: updated.name },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, category: updated });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
-    console.error('Error updating category:', error);
-    return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to update category');
   }
 }
 
@@ -66,8 +77,12 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     // Check if category has products
     const productCount = await prisma.product.count({
@@ -87,12 +102,18 @@ export async function DELETE(
       where: { id: params.id },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'DELETE_CATEGORY', categoryId: params.id },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, message: 'Category deleted successfully' });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
-    console.error('Error deleting category:', error);
-    return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to delete category');
   }
 }

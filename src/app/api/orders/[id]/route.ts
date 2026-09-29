@@ -10,12 +10,39 @@ import {
 import { getTrackingUrl } from '@/lib/shipping-engine';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
+import { checkRateLimit } from '@/lib/rate-limit';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 1. Rate limiting on order lookup (20 requests per minute per IP to prevent ID/number scraping)
+    const rateLimit = await checkRateLimit(request, {
+      keyPrefix: 'order_lookup',
+      limit: 20,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: 'Too many order requests. Please wait a moment.' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.reset) } }
+      );
+    }
+
     const session = await getSession();
+    let isAdmin = false;
+    if (session?.id) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: session.id },
+        select: { id: true, role: true },
+      });
+      isAdmin = dbUser?.role === 'ADMIN';
+    }
+
     const { id } = params;
 
     const order = await prisma.order.findFirst({
@@ -44,9 +71,13 @@ export async function GET(
             phone: true,
           },
         },
-        emails: {
-          orderBy: { createdAt: 'desc' },
-        },
+        ...(isAdmin
+          ? {
+              emails: {
+                orderBy: { createdAt: 'desc' },
+              },
+            }
+          : {}),
       },
     });
 
@@ -54,19 +85,54 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    // Access control: Admin or order owner or guest matching verification
+    // 2. Strict Authorization Verification
     if (order.userId) {
-      if (!session || (session.role !== 'ADMIN' && session.id !== order.userId)) {
+      // Registered User Order: Only the order owner or verified store administrator can view
+      if (!session || (!isAdmin && session.id !== order.userId)) {
+        logSecurityEvent(
+          'AUTHZ_FAILURE',
+          { reason: 'USER_ORDER_ACCESS_DENIED', orderId: order.id, attemptedUserId: session?.id },
+          request,
+          session ? { userId: session.id, role: session.role } : undefined
+        );
         return NextResponse.json({ error: 'Unauthorized to view this order' }, { status: 403 });
       }
-    } else if (session && session.role !== 'ADMIN' && session.email !== order.guestEmail) {
-      return NextResponse.json({ error: 'Unauthorized to view this order' }, { status: 403 });
+    } else {
+      // Guest Order: Require either Admin session, matching authenticated user email, or matching query email + postal code
+      const emailQuery = request.nextUrl.searchParams.get('email')?.trim().toLowerCase();
+      const postalCodeQuery = request.nextUrl.searchParams.get('postalCode')?.trim().toLowerCase();
+      const isMatchingLoggedInUser = session && session.email?.toLowerCase() === order.guestEmail?.toLowerCase();
+      const isVerifiedGuest = Boolean(
+        emailQuery &&
+        postalCodeQuery &&
+        order.guestEmail &&
+        emailQuery === order.guestEmail.toLowerCase() &&
+        postalCodeQuery === order.shippingPostalCode.toLowerCase()
+      );
+
+      if (!isAdmin && !isMatchingLoggedInUser && !isVerifiedGuest) {
+        logSecurityEvent(
+          'AUTHZ_FAILURE',
+          { reason: 'GUEST_ORDER_ACCESS_DENIED', orderId: order.id, emailQuery },
+          request,
+          session ? { userId: session.id, role: session.role } : undefined
+        );
+        return NextResponse.json(
+          { error: 'Unauthorized to view this order. Associated email address and postal code are required.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 3. Sanitize sensitive internal payment tokens for non-admin callers
+    if (!isAdmin) {
+      const { stripePaymentId, stripeSessionId, ...safeOrder } = order as any;
+      return NextResponse.json({ order: safeOrder });
     }
 
     return NextResponse.json({ order });
   } catch (error) {
-    console.error('Error fetching order:', error);
-    return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch order details');
   }
 }
 
@@ -74,6 +140,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
     const session = await requireAdmin();
 
@@ -156,6 +226,19 @@ export async function PATCH(
       },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      {
+        action: 'UPDATE_ORDER_STATUS',
+        orderId: params.id,
+        orderNumber: currentOrder.orderNumber,
+        newStatus: status || currentOrder.status,
+        newPaymentStatus: paymentStatus || currentOrder.paymentStatus,
+      },
+      request,
+      { userId: session.id, role: session.role }
+    );
+
     // Customer recipient resolution
     const customerEmail =
       updated.guestEmail ||
@@ -210,7 +293,6 @@ export async function PATCH(
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
-    console.error('Error updating order:', error);
-    return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to update order');
   }
 }

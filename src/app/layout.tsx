@@ -4,6 +4,7 @@ import { CartProvider } from '@/context/CartContext';
 import { StoreLayout } from '@/components/layout/StoreLayout';
 
 import { generateSEOMetadata, generateOrganizationSchema, STORE_INFO, SITE_URL } from '@/lib/seo';
+import { sanitizeJsonLd } from '@/lib/security-client';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -62,7 +63,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(generateOrganizationSchema()),
+            __html: sanitizeJsonLd(generateOrganizationSchema()),
           }}
         />
       </head>

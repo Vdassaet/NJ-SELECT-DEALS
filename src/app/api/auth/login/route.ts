@@ -1,51 +1,103 @@
-export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPassword, createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { logSecurityEvent } from '@/lib/security-logger';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // 1. CSRF / Origin Validation
+    if (!validateOrigin(request)) {
+      return NextResponse.json({ error: 'Invalid request origin' }, { status: 403 });
+    }
+
+    // 2. Rate Limiting (5 login attempts per minute per IP to block brute force)
+    const rateLimit = await checkRateLimit(request, {
+      keyPrefix: 'auth_login',
+      limit: 5,
+      windowSeconds: 60,
+    });
+
+    if (!rateLimit.success) {
+      logSecurityEvent({
+        type: 'SUSPICIOUS_AUTH',
+        level: 'WARN',
+        action: 'LOGIN_RATE_LIMIT_EXCEEDED',
+        ip: getClientIp(request),
+      });
+      return NextResponse.json(
+        { error: 'Too many login attempts. Please try again in a minute.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.reset) },
+        }
+      );
+    }
+
+    // 3. Input Validation
+    const body = await request.json().catch(() => ({}));
     const { email, password } = body;
 
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+      return NextResponse.json({ error: 'Valid email and password are required.' }, { status: 400 });
     }
 
     const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail.includes('@') || cleanEmail.length > 254) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
 
-    let user = await prisma.user.findUnique({
+    // Account-level rate limiting to prevent distributed brute force against a single account
+    const accountRateLimit = await checkRateLimit(request, {
+      keyPrefix: 'auth_account',
+      identifier: cleanEmail,
+      skipIp: true,
+      limit: 5,
+      windowSeconds: 60,
+    });
+    if (!accountRateLimit.success) {
+      logSecurityEvent({
+        type: 'SUSPICIOUS_AUTH',
+        level: 'WARN',
+        action: 'ACCOUNT_LOGIN_RATE_LIMIT_EXCEEDED',
+        ip: getClientIp(request),
+        userEmail: cleanEmail,
+      });
+      return NextResponse.json(
+        { error: 'Too many login attempts for this account. Please wait a minute.' },
+        { status: 429, headers: { 'Retry-After': String(accountRateLimit.reset) } }
+      );
+    }
+
+    // 4. Ground-truth User Query (No auto-bootstrap fallback)
+    const user = await prisma.user.findUnique({
       where: { email: cleanEmail },
     });
 
-    // Auto-bootstrap initial admin if database is newly provisioned and unseeded
     if (!user) {
-      const defaultAdminEmail = (process.env.ADMIN_EMAIL || 'admin@njselectdeals.com').toLowerCase().trim();
-      const defaultAdminPassword = process.env.ADMIN_PASSWORD || 'AdminSecure123!';
-
-      if (cleanEmail === defaultAdminEmail && password === defaultAdminPassword) {
-        const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
-        if (adminCount === 0) {
-          const { hashPassword } = await import('@/lib/auth');
-          const passwordHash = await hashPassword(defaultAdminPassword);
-          user = await prisma.user.create({
-            data: {
-              email: defaultAdminEmail,
-              name: 'Store Owner',
-              passwordHash,
-              role: 'ADMIN',
-            },
-          });
-        }
-      }
-    }
-
-    if (!user) {
+      logSecurityEvent({
+        type: 'FAILED_LOGIN',
+        level: 'WARN',
+        action: 'USER_LOGIN_FAILED_NONEXISTENT_USER',
+        ip: getClientIp(request),
+        userEmail: cleanEmail,
+      });
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
     const isMatch = await verifyPassword(password, user.passwordHash);
     if (!isMatch) {
+      logSecurityEvent({
+        type: 'FAILED_LOGIN',
+        level: 'WARN',
+        action: 'USER_LOGIN_FAILED_PASSWORD_MISMATCH',
+        ip: getClientIp(request),
+        userId: user.id,
+        userEmail: cleanEmail,
+      });
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 
@@ -76,11 +128,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { error: 'An error occurred while signing in. Please check your database connection.' },
-      { status: 500 }
-    );
+    return createSafeErrorResponse(error, 'An error occurred while signing in. Please try again.');
   }
 }
 

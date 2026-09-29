@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { validateOrigin, createSafeErrorResponse } from '@/lib/security';
+import { validatePrice, validateInventoryCount } from '@/lib/validation';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,14 +116,17 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ products, total: products.length });
   } catch (error) {
-    console.error('Error fetching products:', error);
-    return NextResponse.json({ products: [], total: 0, error: 'Failed to fetch products' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to fetch products');
   }
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateOrigin(request)) {
+    return NextResponse.json({ error: 'Invalid origin or cross-site request blocked.' }, { status: 403 });
+  }
+
   try {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
 
     const body = await request.json();
     const {
@@ -139,7 +145,7 @@ export async function POST(request: NextRequest) {
       isBestSeller,
       isActive,
       categoryId,
-      images, // array of strings or { url, altText, isPrimary }
+      images,
     } = body;
 
     if (!name || !sku || !description || price === undefined || !categoryId) {
@@ -147,6 +153,25 @@ export async function POST(request: NextRequest) {
         { error: 'Name, SKU, Description, Price, and Category are required.' },
         { status: 400 }
       );
+    }
+
+    const priceCheck = validatePrice(price, 0.01);
+    if (!priceCheck.valid) {
+      return NextResponse.json({ error: priceCheck.error }, { status: 400 });
+    }
+
+    let validatedSalePrice: number | null = null;
+    if (salePrice !== null && salePrice !== undefined && salePrice !== '') {
+      const spCheck = validatePrice(salePrice, 0.01);
+      if (!spCheck.valid) {
+        return NextResponse.json({ error: spCheck.error }, { status: 400 });
+      }
+      validatedSalePrice = spCheck.value!;
+    }
+
+    const invCheck = validateInventoryCount(inventory ?? 0);
+    if (!invCheck.valid) {
+      return NextResponse.json({ error: invCheck.error }, { status: 400 });
     }
 
     const generatedSlug = slug && slug.trim() ? slugify(slug) : slugify(name);
@@ -187,10 +212,10 @@ export async function POST(request: NextRequest) {
         sku: sku.trim(),
         brand: brand ? brand.trim() : null,
         description: description.trim(),
-        price: parseFloat(price),
-        salePrice: salePrice !== null && salePrice !== undefined && salePrice !== '' ? parseFloat(salePrice) : null,
-        inventory: parseInt(inventory || '0', 10),
-        lowStockThreshold: parseInt(lowStockThreshold || '5', 10),
+        price: priceCheck.value!,
+        salePrice: validatedSalePrice,
+        inventory: invCheck.value!,
+        lowStockThreshold: lowStockThreshold !== undefined ? parseInt(lowStockThreshold, 10) : 5,
         weight: weight ? parseFloat(weight) : null,
         isFeatured: Boolean(isFeatured),
         isNewArrival: isNewArrival !== undefined ? Boolean(isNewArrival) : true,
@@ -207,12 +232,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    logSecurityEvent(
+      'ADMIN_ACTION',
+      { action: 'CREATE_PRODUCT', productId: product.id, sku: product.sku, name: product.name, price: product.price },
+      request,
+      { userId: adminUser.id, role: adminUser.role }
+    );
+
     return NextResponse.json({ success: true, product });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN' || error.message === 'UNAUTHORIZED') {
       return NextResponse.json({ error: 'Admin authorization required' }, { status: 403 });
     }
-    console.error('Error creating product:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create product' }, { status: 500 });
+    return createSafeErrorResponse(error, 'Failed to create product');
   }
 }

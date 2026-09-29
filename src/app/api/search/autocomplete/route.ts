@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createSafeErrorResponse } from '@/lib/security';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +15,23 @@ export const dynamic = 'force-dynamic';
  * - Description
  */
 export async function GET(request: NextRequest) {
+  // Rate limiting (60 requests/min)
+  const rateLimitResult = await checkRateLimit(request, {
+    keyPrefix: 'search_autocomplete',
+    limit: 60,
+    windowSeconds: 60,
+  });
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many search requests. Please wait a moment.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimitResult.reset) } }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get('q')?.trim() || '';
+    const rawQ = searchParams.get('q')?.trim() || '';
+    const q = rawQ.slice(0, 100);
     const limit = Math.min(10, Math.max(1, parseInt(searchParams.get('limit') || '6', 10)));
 
     if (!q || q.length < 1) {
@@ -148,10 +164,6 @@ export async function GET(request: NextRequest) {
       totalMatches: products.length,
     });
   } catch (error) {
-    console.error('Search autocomplete API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process autocomplete search' },
-      { status: 500 }
-    );
+    return createSafeErrorResponse(error, 'Failed to process autocomplete search');
   }
 }
