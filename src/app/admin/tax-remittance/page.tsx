@@ -1,5 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { Landmark, Plus, Search, Calendar, FileText } from 'lucide-react';
+﻿import { prisma } from '@/lib/prisma';
+import { Landmark, Search, Calendar, FileText } from 'lucide-react';
+import RecordPaymentButton from './RecordPaymentButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,10 +40,7 @@ export default async function TaxRemittancePage() {
             Track payments made to the New Jersey Division of Taxation or other government agencies.
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-slate-900 font-bold px-4 py-2 rounded-xl transition-colors">
-          <Plus className="w-4 h-4" />
-          Record Payment
-        </button>
+        <RecordPaymentButton />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -109,3 +107,4 @@ export default async function TaxRemittancePage() {
     </div>
   );
 }
+
