@@ -177,7 +177,7 @@ export default function CustomerOrdersPage() {
                     ) : (
                       <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 flex items-center space-x-2">
                         <Clock className="w-4 h-4 text-amber-500" />
-                        <span>Fulfillment in progress at our Paramus warehouse. Tracking information will be emailed once dispatched.</span>
+                        <span>Fulfillment in progress at our NJ SELECT DEALS team. Tracking information will be emailed once dispatched.</span>
                       </div>
                     )}
 

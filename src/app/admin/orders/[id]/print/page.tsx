@@ -244,7 +244,7 @@ export default function PrintableOrderPage({ params }: { params: { id: string } 
       <div className="border-t border-slate-200 pt-6 text-[11px] text-slate-500 text-center space-y-1">
         <p className="font-bold text-slate-700">Thank you for your order with NJ Select Deals!</p>
         <p>
-          Questions about your shipment or return requests? Contact our Paramus warehouse team at{' '}
+          Questions about your shipment or return requests? Contact our NJ SELECT DEALS team at{' '}
           <strong>support@njselectdeals.com</strong> or call <strong>(800) 555-DEAL</strong>.
         </p>
         <p className="text-[10px] text-slate-400 pt-2">

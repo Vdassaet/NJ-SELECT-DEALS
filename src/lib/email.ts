@@ -273,7 +273,7 @@ export async function sendOrderConfirmationCustomerEmail(payload: OrderEmailPayl
 
           <p style="font-size: 14px; line-height: 1.5; color: #334155;">
             Hi <strong>${payload.customerName}</strong>,<br/>
-            We have received your order and payment confirmation. Our Paramus fulfillment team is preparing your package.
+            We have received your order and payment confirmation. Our NJ SELECT DEALS team is preparing your package.
           </p>
 
           <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
