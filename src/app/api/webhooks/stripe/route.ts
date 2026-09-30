@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
               total: parseFloat(metadata.total || '0'),
               notes: metadata.notes || null,
               couponCode: metadata.couponCode || null,
+              shippingMethod: (metadata.shippingMethod === 'free' || metadata.shippingMethod === 'fast') ? metadata.shippingMethod : undefined,
               appliedPromotionIds,
             });
             console.log(`[STRIPE WEBHOOK] Order completed for session ${session.id}`);
