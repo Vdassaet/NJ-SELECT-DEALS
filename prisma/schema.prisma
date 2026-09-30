@@ -27,6 +27,7 @@ enum PaymentStatus {
   FAILED
   CANCELLED
   REFUNDED
+  PARTIALLY_REFUNDED
 }
 
 enum AddressType {
@@ -35,18 +36,18 @@ enum AddressType {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   name         String
   passwordHash String
-  role         Role        @default(CUSTOMER)
+  role         Role     @default(CUSTOMER)
   phone        String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  addresses    Address[]
-  orders       Order[]
-  reviews      Review[]
+  addresses     Address[]
+  orders        Order[]
+  reviews       Review[]
   inventoryLogs InventoryLog[]
 
   @@map("users")
@@ -68,61 +69,61 @@ model Address {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("addresses")
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String   @unique
   description String?
   image       String?
-  isActive    Boolean   @default(true)
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  products    Product[]
-  promotions  Promotion[]
+  products   Product[]
+  promotions Promotion[]
 
   @@map("categories")
 }
 
 model Product {
-  id                String           @id @default(cuid())
+  id                String   @id @default(cuid())
   name              String
-  slug              String           @unique
-  sku               String           @unique
+  slug              String   @unique
+  sku               String   @unique
   brand             String?
   description       String
   price             Float
   salePrice         Float?
   costPrice         Float?
-  inventory         Int              @default(0)
-  reservedQuantity  Int              @default(0)
-  lowStockThreshold Int              @default(5)
+  inventory         Int      @default(0)
+  reservedQuantity  Int      @default(0)
+  lowStockThreshold Int      @default(5)
   weight            Float?
-  isFeatured        Boolean          @default(false)
-  isNewArrival      Boolean          @default(true)
-  isBestSeller      Boolean          @default(false)
-  isActive          Boolean          @default(true)
-  rating            Float            @default(5.0)
-  reviewCount       Int              @default(0)
+  isFeatured        Boolean  @default(false)
+  isNewArrival      Boolean  @default(true)
+  isBestSeller      Boolean  @default(false)
+  isActive          Boolean  @default(true)
+  rating            Float    @default(5.0)
+  reviewCount       Int      @default(0)
   categoryId        String
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  category          Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  images            ProductImage[]
-  variants          ProductVariant[]
-  orderItems        OrderItem[]
-  reviews           Review[]
-  inventoryLogs     InventoryLog[]
-  promotions        Promotion[]      @relation("ProductPromotions")
-  relatedOrigins    ProductRelation[] @relation("OriginProduct")
-  relatedTargets    ProductRelation[] @relation("TargetProduct")
+  category       Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images         ProductImage[]
+  variants       ProductVariant[]
+  orderItems     OrderItem[]
+  reviews        Review[]
+  inventoryLogs  InventoryLog[]
+  promotions     Promotion[]       @relation("ProductPromotions")
+  relatedOrigins ProductRelation[] @relation("OriginProduct")
+  relatedTargets ProductRelation[] @relation("TargetProduct")
 
   @@index([categoryId])
   @@index([isActive])
@@ -130,28 +131,28 @@ model Product {
 }
 
 model ProductImage {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
   url       String
   altText   String?
-  isPrimary Boolean  @default(false)
-  sortOrder Int      @default(0)
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@map("product_images")
 }
 
 model ProductVariant {
-  id        String      @id @default(cuid())
+  id        String @id @default(cuid())
   productId String
   name      String
-  sku       String      @unique
+  sku       String @unique
   price     Float?
-  inventory Int         @default(0)
+  inventory Int    @default(0)
 
-  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
 
   @@index([productId])
@@ -159,20 +160,29 @@ model ProductVariant {
 }
 
 model Order {
-  id                 String        @id @default(cuid())
-  orderNumber        String        @unique
-  userId             String?
-  guestEmail         String?
-  status             OrderStatus   @default(PENDING)
-  paymentStatus      PaymentStatus @default(PENDING)
-  subtotal           Float
-  discount           Float         @default(0)
-  shippingCost       Float         @default(0)
-  tax                Float         @default(0)
-  total              Float
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  userId        String?
+  guestEmail    String?
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  subtotal      Float
+  discount      Float         @default(0)
+  shippingCost  Float         @default(0)
+  tax           Float         @default(0)
+  total         Float
 
-  stripePaymentId    String?       @unique
-  stripeSessionId    String?       @unique
+  // Tax & Refund Accounting Fields
+  taxRateUsed        Float @default(0)
+  taxableSubtotal    Float @default(0)
+  nonTaxableSubtotal Float @default(0)
+  taxableShipping    Float @default(0)
+  nonTaxableShipping Float @default(0)
+  amountRefunded     Float @default(0)
+  taxRefunded        Float @default(0)
+
+  stripePaymentId String? @unique
+  stripeSessionId String? @unique
 
   // Shipping Address Snapshot
   shippingName       String
@@ -181,7 +191,7 @@ model Order {
   shippingCity       String
   shippingState      String
   shippingPostalCode String
-  shippingCountry    String        @default("US")
+  shippingCountry    String  @default("US")
   shippingPhone      String?
   // Shipping & Tracking
   carrier            String?
@@ -189,13 +199,14 @@ model Order {
   trackingUrl        String?
   notes              String?
 
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  items              OrderItem[]
-  payments           Payment[]
-  emails             EmailLog[]
+  user     User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+  payments Payment[]
+  emails   EmailLog[]
+  refunds  RefundRecord[]
 
   @@index([userId])
   @@index([status])
@@ -203,7 +214,7 @@ model Order {
 }
 
 model OrderItem {
-  id           String          @id @default(cuid())
+  id           String  @id @default(cuid())
   orderId      String
   productId    String
   variantId    String?
@@ -213,9 +224,9 @@ model OrderItem {
   quantity     Int
   total        Float
 
-  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product      Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
-  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])
@@ -244,7 +255,7 @@ model Payment {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@map("payments")
@@ -261,8 +272,8 @@ model Review {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([productId])
   @@index([userId])
@@ -306,7 +317,7 @@ model EmailLog {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
-  order      Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([recipient])
@@ -315,20 +326,20 @@ model EmailLog {
 }
 
 model InventoryLog {
-  id               String       @id @default(cuid())
+  id               String   @id @default(cuid())
   productId        String
   sku              String
   previousQuantity Int
   newQuantity      Int
   difference       Int
-  reason           String       // ORDER_PLACED, ORDER_CANCELLED, ORDER_REFUNDED, MANUAL_ADJUSTMENT, RESTOCK, etc.
+  reason           String // ORDER_PLACED, ORDER_CANCELLED, ORDER_REFUNDED, MANUAL_ADJUSTMENT, RESTOCK, etc.
   orderNumber      String?
-  performedBy      String?      // Admin email, customer email, or "SYSTEM"
+  performedBy      String? // Admin email, customer email, or "SYSTEM"
   userId           String?
-  createdAt        DateTime     @default(now())
+  createdAt        DateTime @default(now())
 
-  product          Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user             User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([sku])
@@ -356,36 +367,37 @@ enum PromotionScope {
 }
 
 model Promotion {
-  id                 String         @id @default(cuid())
-  name               String
-  description        String?
-  type               PromotionType  @default(PERCENTAGE)
-  scope              PromotionScope @default(PRODUCT)
-  discountType       String?        // PERCENTAGE, FIXED_AMOUNT, SALE_PRICE, FREE_SHIPPING
-  discountValue      Float?
-  salePrice          Float?
-  couponCode         String?        @unique
-  categoryId         String?
-  minOrderSubtotal   Float?
-  minQuantity        Int?
-  buyQuantity        Int?           // Buy X
-  getQuantity        Int?           // Get Y
-  getDiscountPercent Float?         // % off on Y (100 = Free, 50 = 50% off)
-  tieredRules        Json?          // Array of { minQty: number, discountPercent: number }
-  bundleProductIds   Json?          // Array of product IDs required for bundle
-  maxQuantity        Int?           // Flash sale maximum quota or per-order cap
-  usageLimit         Int?           // Total maximum coupon redemptions
-  usedCount          Int            @default(0)
-  startDate          DateTime       @default(now())
-  endDate            DateTime?
-  isActive           Boolean        @default(true)
-  isFlashSale        Boolean        @default(false)
-  bannerText         String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  id                   String         @id @default(cuid())
+  name                 String
+  description          String?
+  type                 PromotionType  @default(PERCENTAGE)
+  scope                PromotionScope @default(PRODUCT)
+  discountType         String? // PERCENTAGE, FIXED_AMOUNT, SALE_PRICE, FREE_SHIPPING
+  discountValue        Float?
+  salePrice            Float?
+  couponCode           String?        @unique
+  categoryId           String?
+  minOrderSubtotal     Float?
+  minQuantity          Int?
+  buyQuantity          Int? // Buy X
+  getQuantity          Int? // Get Y
+  getDiscountPercent   Float? // % off on Y (100 = Free, 50 = 50% off)
+  tieredRules          Json? // Array of { minQty: number, discountPercent: number }
+  bundleProductIds     Json? // Array of product IDs required for bundle
+  maxQuantity          Int? // Flash sale maximum quota or per-order cap
+  usageLimit           Int? // Total maximum coupon redemptions
+  usedCount            Int            @default(0)
+  startDate            DateTime       @default(now())
+  endDate              DateTime?
+  isActive             Boolean        @default(true)
+  isFlashSale          Boolean        @default(false)
+  reducesTaxableAmount Boolean        @default(true) // Store discount reduces tax, manufacturer coupon does not
+  bannerText           String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
-  category           Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  products           Product[]      @relation("ProductPromotions")
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  products Product[] @relation("ProductPromotions")
 
   @@index([type])
   @@index([scope])
@@ -396,15 +408,15 @@ model Promotion {
 }
 
 model ProductRelation {
-  id             String   @id @default(cuid())
-  productId      String
-  relatedId      String
-  relationship   String   @default("RELATED") // RELATED, UPSELL, CROSS_SELL
-  sortOrder      Int      @default(0)
-  createdAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  productId    String
+  relatedId    String
+  relationship String   @default("RELATED") // RELATED, UPSELL, CROSS_SELL
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
 
-  product        Product  @relation("OriginProduct", fields: [productId], references: [id], onDelete: Cascade)
-  relatedProduct Product  @relation("TargetProduct", fields: [relatedId], references: [id], onDelete: Cascade)
+  product        Product @relation("OriginProduct", fields: [productId], references: [id], onDelete: Cascade)
+  relatedProduct Product @relation("TargetProduct", fields: [relatedId], references: [id], onDelete: Cascade)
 
   @@unique([productId, relatedId])
   @@index([productId])
@@ -412,3 +424,55 @@ model ProductRelation {
   @@map("product_relations")
 }
 
+enum RefundReason {
+  FRAUD
+  CUSTOMER_REQUEST
+  DAMAGED
+  INVENTORY_SHORTAGE
+  OTHER
+}
+
+model RefundRecord {
+  id             String       @id @default(cuid())
+  orderId        String
+  amountRefunded Float
+  taxRefunded    Float
+  reason         RefundReason @default(CUSTOMER_REQUEST)
+  stripeRefundId String?      @unique
+  notes          String?
+  createdAt      DateTime     @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("refund_records")
+}
+
+model TaxJurisdiction {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  stateCode       String   @unique
+  rate            Float
+  shippingTaxable Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("tax_jurisdictions")
+}
+
+model TaxRemittance {
+  id                 String   @id @default(cuid())
+  taxPeriod          String
+  amountPaid         Float
+  paymentDate        DateTime
+  agency             String
+  confirmationNumber String?
+  paymentMethod      String?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([taxPeriod])
+  @@map("tax_remittances")
+}

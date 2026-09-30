@@ -135,18 +135,22 @@ export async function POST(request: NextRequest) {
       // Case E: Charge Refunded
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
-        const paymentIntentId =
-          typeof charge.payment_intent === 'string'
-            ? charge.payment_intent
-            : charge.payment_intent?.id;
-
+        const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+        
         if (paymentIntentId) {
-          await updateOrderPaymentState(
-            { stripePaymentId: paymentIntentId },
-            PaymentStatus.REFUNDED,
-            OrderStatus.CANCELLED
-          );
-          console.log(`[STRIPE WEBHOOK] Charge refunded for PaymentIntent: ${paymentIntentId}`);
+          // charge.refunded is true if fully refunded, false if partially refunded
+          const isFullRefund = charge.refunded;
+          const amountRefunded = charge.amount_refunded / 100; // Total refunded so far
+          // To calculate just THIS refund amount and tax, we need to query the order
+          // But for now, we can pass it to a robust handler in order-service
+          const stripeRefundId = charge.refunds?.data[charge.refunds.data.length - 1]?.id || 'refund_' + Date.now();
+          const thisRefundAmount = (charge.refunds?.data[charge.refunds.data.length - 1]?.amount || charge.amount_refunded) / 100;
+
+          // Dynamically imported to avoid circular dependency issues if any
+          const { recordRefund } = await import('@/lib/order-service');
+          await recordRefund(paymentIntentId, stripeRefundId, thisRefundAmount, isFullRefund);
+          
+          console.log('[STRIPE WEBHOOK] Charge refunded for PaymentIntent: ' + paymentIntentId);
         }
         break;
       }

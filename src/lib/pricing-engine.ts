@@ -101,9 +101,13 @@ export async function calculateOrderPricing(
       shippingCost: 0,
       isFreeShipping: false,
       freeShippingThreshold: DEFAULT_FREE_SHIPPING_THRESHOLD,
-      tax: 0,
-      taxRate: NJ_SALES_TAX_RATE,
-      total: 0,
+    tax: 0,
+    taxRate: NJ_SALES_TAX_RATE,
+    taxableSubtotal: 0,
+    nonTaxableSubtotal: 0,
+    taxableShipping: 0,
+    nonTaxableShipping: 0,
+    total: 0,
       itemBreakdowns: [],
       appliedPromotions: [],
       coupon: null,
@@ -463,9 +467,18 @@ export async function calculateOrderPricing(
     });
   }
 
-  // 7. Taxes & Final Calculations
+  // 7. NEW TAX RULES
+  let taxRate = NJ_SALES_TAX_RATE;
+  let shippingTaxable = true;
+  // (In the future, fetch from TaxJurisdiction here)
+
   const taxableSubtotal = Math.max(0, subtotalAfterItemDiscounts - orderDiscount);
-  const tax = Math.round(taxableSubtotal * NJ_SALES_TAX_RATE * 100) / 100;
+  const nonTaxableSubtotal = 0; // Simplified for now
+  
+  const taxableShipping = shippingTaxable ? shippingCost : 0;
+  const nonTaxableShipping = shippingTaxable ? 0 : shippingCost;
+
+  const tax = Math.round((taxableSubtotal + taxableShipping) * taxRate * 100) / 100;
   const total = Math.round((taxableSubtotal + shippingCost + tax) * 100) / 100;
 
   const totalItemDiscount = itemBreakdowns.reduce((sum, item) => sum + item.lineDiscount, 0);
@@ -481,7 +494,11 @@ export async function calculateOrderPricing(
     isFreeShipping,
     freeShippingThreshold: DEFAULT_FREE_SHIPPING_THRESHOLD,
     tax,
-    taxRate: NJ_SALES_TAX_RATE,
+    taxRate,
+    taxableSubtotal: Math.round(taxableSubtotal * 100) / 100,
+    nonTaxableSubtotal: Math.round(nonTaxableSubtotal * 100) / 100,
+    taxableShipping,
+    nonTaxableShipping,
     total,
     itemBreakdowns,
     appliedPromotions: Array.from(appliedPromotionsMap.values()),

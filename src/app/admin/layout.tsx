@@ -21,7 +21,7 @@ import {
   Star,
   Truck,
   BarChart3
-} from 'lucide-react';
+, FileText, Landmark } from 'lucide-react';
 import { UserSession } from '@/lib/types';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -78,6 +78,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: 'Reviews', href: '/admin/reviews', icon: Star },
     { label: 'Shipping', href: '/admin/shipping', icon: Truck },
     { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
+    { label: 'Tax & Gov Reports', href: '/admin/tax-reports', icon: FileText },
+    { label: 'Tax Remittance', href: '/admin/tax-remittance', icon: Landmark },
     { label: 'Settings', href: '/admin/settings', icon: Settings },
   ];
 

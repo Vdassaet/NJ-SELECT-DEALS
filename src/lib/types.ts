@@ -308,6 +308,10 @@ export interface OrderPricingResult {
   freeShippingThreshold: number;
   tax: number;
   taxRate: number;
+  taxableSubtotal: number;
+  nonTaxableSubtotal: number;
+  taxableShipping: number;
+  nonTaxableShipping: number;
   total: number;
   itemBreakdowns: ItemDiscountBreakdown[];
   appliedPromotions: AppliedPromotionSummary[];

@@ -171,9 +171,13 @@ export async function completePaidOrder(input: CompleteOrderInput) {
           status: OrderStatus.PROCESSING,
           paymentStatus: PaymentStatus.PAID,
           subtotal,
-          discount,
-          shippingCost,
+          discount,          shippingCost,
           tax,
+          taxRateUsed: authoritativePricing.taxRate,
+          taxableSubtotal: authoritativePricing.taxableSubtotal,
+          nonTaxableSubtotal: authoritativePricing.nonTaxableSubtotal,
+          taxableShipping: authoritativePricing.taxableShipping,
+          nonTaxableShipping: authoritativePricing.nonTaxableShipping,
           total,
           stripePaymentId: input.stripePaymentId || null,
           stripeSessionId: input.stripeSessionId || null,
@@ -466,4 +470,49 @@ export async function updateOrderPaymentState(
   });
 
   return existing;
+}
+export async function recordRefund(stripePaymentId: string, stripeRefundId: string, thisRefundAmount: number, isFullRefund: boolean) {
+  return await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({ where: { stripePaymentId } });
+    if (!order) return;
+
+    // Idempotency check
+    const existing = await tx.refundRecord.findUnique({ where: { stripeRefundId } });
+    if (existing) return;
+
+    // Calculate proportional tax refunded
+    // taxRefunded = thisRefundAmount * (order.tax / order.total)
+    let taxRefunded = 0;
+    if (order.total > 0 && order.tax > 0) {
+      taxRefunded = Math.round((thisRefundAmount * (order.tax / order.total)) * 100) / 100;
+    }
+
+    if (isFullRefund) {
+      // Ensure we don't refund more tax than was collected
+      taxRefunded = Math.max(0, order.tax - order.taxRefunded);
+    }
+
+    await tx.refundRecord.create({
+      data: {
+        orderId: order.id,
+        stripeRefundId,
+        amountRefunded: thisRefundAmount,
+        taxRefunded,
+        reason: 'CUSTOMER_REQUEST',
+      }
+    });
+
+    const totalRefunded = order.amountRefunded + thisRefundAmount;
+    const newTaxRefunded = order.taxRefunded + taxRefunded;
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        amountRefunded: totalRefunded,
+        taxRefunded: newTaxRefunded,
+        paymentStatus: isFullRefund ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
+        status: isFullRefund ? 'CANCELLED' : order.status
+      }
+    });
+  });
 }

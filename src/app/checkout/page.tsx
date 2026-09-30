@@ -50,8 +50,9 @@ export default function CheckoutPage() {
   // Calculate NJ State Sales Tax (6.625%)
   const effectiveSubtotal = Math.max(0, subtotal - (appliedCoupon?.discountAmount || 0));
   const taxRate = 0.06625;
-  const taxEstimate = Math.round(effectiveSubtotal * taxRate * 100) / 100;
   const actualShippingCost = shippingMethod === 'fast' ? 4.99 : 0;
+  const taxableShipping = actualShippingCost; // In NJ, shipping is taxable
+  const taxEstimate = Math.round((effectiveSubtotal + taxableShipping) * taxRate * 100) / 100;
   const orderTotalWithTax = Math.round((effectiveSubtotal + actualShippingCost + taxEstimate) * 100) / 100;
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
