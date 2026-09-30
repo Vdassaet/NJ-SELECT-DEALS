@@ -77,7 +77,7 @@ export default async function TaxReportsPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
             <FileText className="w-6 h-6 text-brand-500" />
-            NJ Select Deals – Sales Tax Summary
+            NJ Select Deals ï¿½ Sales Tax Summary
           </h1>
           <p className="text-slate-500 text-sm mt-1">
             Government reporting dashboard for New Jersey Division of Taxation.
