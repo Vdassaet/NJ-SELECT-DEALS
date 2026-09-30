@@ -108,15 +108,12 @@ export function generateOrganizationSchema() {
     url: STORE_INFO.url,
     logo: STORE_INFO.logo,
     description: STORE_INFO.description,
-    telephone: STORE_INFO.telephone,
     email: STORE_INFO.email,
     priceRange: STORE_INFO.priceRange,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: STORE_INFO.address.streetAddress,
       addressLocality: STORE_INFO.address.addressLocality,
       addressRegion: STORE_INFO.address.addressRegion,
-      postalCode: STORE_INFO.address.postalCode,
       addressCountry: STORE_INFO.address.addressCountry,
     },
     geo: {
