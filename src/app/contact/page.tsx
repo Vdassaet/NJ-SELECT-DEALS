@@ -41,10 +41,10 @@ export default function ContactPage() {
           <h3 className="font-black text-slate-900 text-sm">Email Support</h3>
           <p className="text-xs text-slate-500">Fast replies within 2-4 hours</p>
           <a
-            href="mailto:support@njselectdeals.com"
+            href="mailto:njselectdeals@gmail.com"
             className="text-xs font-bold text-brand-600 hover:underline block"
           >
-            support@njselectdeals.com
+            njselectdeals@gmail.com
           </a>
         </div>
 

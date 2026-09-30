@@ -10,7 +10,7 @@ export const STORE_INFO = {
   url: SITE_URL,
   logo: `${SITE_URL}/icon.png`,
   telephone: '+1-800-555-3325',
-  email: 'support@njselectdeals.com',
+  email: 'njselectdeals@gmail.com',
   address: {
     streetAddress: '100 Route 17 North',
     addressLocality: 'Paramus',

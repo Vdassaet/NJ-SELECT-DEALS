@@ -48,7 +48,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-base font-black text-slate-900">3. Contacting Our Data Protection Team</h2>
           <p>
-            For inquiries regarding your personal data or to request account deletion, please email <strong>privacy@njselectdeals.com</strong> or write to 100 Route 17 North, Paramus, NJ 07652.
+            For inquiries regarding your personal data or to request account deletion, please email <strong>njselectdeals@gmail.com</strong> or write to 100 Route 17 North, Paramus, NJ 07652.
           </p>
         </section>
       </div>

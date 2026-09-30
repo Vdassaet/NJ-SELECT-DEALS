@@ -91,7 +91,7 @@ export function Footer() {
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-brand-400 flex-shrink-0" />
-                <span>support@njselectdeals.com</span>
+                <span>njselectdeals@gmail.com</span>
               </div>
             </div>
           </div>

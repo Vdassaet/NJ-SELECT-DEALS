@@ -26,7 +26,7 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({
     store_name: 'NJ Select Deals',
     store_logo: '',
-    store_email: 'support@njselectdeals.com',
+    store_email: 'njselectdeals@gmail.com',
     order_notification_email: 'orders@njselectdeals.com',
     store_phone: '(800) 555-DEAL',
     store_address: '100 Route 17 North, Paramus, NJ 07652',

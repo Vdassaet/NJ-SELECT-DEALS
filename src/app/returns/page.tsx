@@ -153,7 +153,7 @@ export default function ReturnsPage() {
               <span>Strict 48-Hour Notification Window:</span>
             </div>
             <p className="text-slate-600">
-              You must contact NJ Select Deals at <strong>support@njselectdeals.com</strong> within <strong>48 hours of carrier delivery</strong> (as recorded by carrier tracking timestamps). Claims submitted after 48 hours cannot be accepted.
+              You must contact NJ Select Deals at <strong>njselectdeals@gmail.com</strong> within <strong>48 hours of carrier delivery</strong> (as recorded by carrier tracking timestamps). Claims submitted after 48 hours cannot be accepted.
             </p>
             <p className="font-bold text-slate-800 pt-1">Mandatory Photographic Evidence Required:</p>
             <ul className="list-disc list-inside space-y-1 text-slate-600 pl-2">
@@ -289,8 +289,8 @@ export default function ReturnsPage() {
             <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-700 pt-1">
               <div className="flex items-center space-x-1.5">
                 <Mail className="w-4 h-4 text-brand-600" />
-                <a href="mailto:support@njselectdeals.com" className="text-brand-600 hover:underline">
-                  support@njselectdeals.com
+                <a href="mailto:njselectdeals@gmail.com" className="text-brand-600 hover:underline">
+                  njselectdeals@gmail.com
                 </a>
               </div>
               <div className="flex items-center space-x-1.5">

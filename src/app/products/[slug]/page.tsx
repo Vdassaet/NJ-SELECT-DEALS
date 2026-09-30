@@ -578,7 +578,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                     To maintain strict consumer safety, hygiene, and product integrity, personal care, beauty, cosmetics, liquids, hair care, and confectionery items are <strong>final sale and non-returnable</strong> once dispatched. We do not accept returns for change of mind or ordering errors.
                   </p>
                   <p className="text-slate-500">
-                    <strong>Transit Damage or Defect?</strong> If your item arrived materially damaged, leaking, or defective, contact our customer support team within <strong>48 hours of delivery</strong> at <a href="mailto:support@njselectdeals.com" className="text-brand-600 font-semibold hover:underline">support@njselectdeals.com</a> with photographs of the product, exterior shipping box, and shipping label. Read our complete <Link href="/returns" className="text-brand-600 font-semibold hover:underline">Return &amp; Refund Policy</Link>.
+                    <strong>Transit Damage or Defect?</strong> If your item arrived materially damaged, leaking, or defective, contact our customer support team within <strong>48 hours of delivery</strong> at <a href="mailto:njselectdeals@gmail.com" className="text-brand-600 font-semibold hover:underline">njselectdeals@gmail.com</a> with photographs of the product, exterior shipping box, and shipping label. Read our complete <Link href="/returns" className="text-brand-600 font-semibold hover:underline">Return &amp; Refund Policy</Link>.
                   </p>
                 </div>
               )}

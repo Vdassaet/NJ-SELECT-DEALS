@@ -26,11 +26,11 @@ const faqs = [
   },
   {
     q: 'What is your return and refund policy?',
-    a: 'Due to strict consumer safety, hygiene, and food sanitation standards, all sales of liquids, cosmetics, personal care, hair care, beauty, confectionery, chocolates, and consumable goods are final once shipped. We do not accept returns or issue refunds for change of mind, ordering errors, or subjective dissatisfaction. If an item arrives materially damaged in transit or defective, notify support@njselectdeals.com within 48 hours of delivery with photographic proof.',
+    a: 'Due to strict consumer safety, hygiene, and food sanitation standards, all sales of liquids, cosmetics, personal care, hair care, beauty, confectionery, chocolates, and consumable goods are final once shipped. We do not accept returns or issue refunds for change of mind, ordering errors, or subjective dissatisfaction. If an item arrives materially damaged in transit or defective, notify njselectdeals@gmail.com within 48 hours of delivery with photographic proof.',
   },
   {
     q: 'What should I do if my order arrives damaged, leaking, or broken?',
-    a: 'Contact support@njselectdeals.com within 48 hours of carrier delivery with your Order Number and clear photos of the damaged item, the exterior box, and the shipping label. Please retain all original packaging while we investigate. Based on review, NJ Select Deals may provide a replacement, store credit, or refund as appropriate.',
+    a: 'Contact njselectdeals@gmail.com within 48 hours of carrier delivery with your Order Number and clear photos of the damaged item, the exterior box, and the shipping label. Please retain all original packaging while we investigate. Based on review, NJ Select Deals may provide a replacement, store credit, or refund as appropriate.',
   },
   {
     q: 'Can I cancel my order after it has been placed?',

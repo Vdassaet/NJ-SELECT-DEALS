@@ -245,7 +245,7 @@ export default function PrintableOrderPage({ params }: { params: { id: string } 
         <p className="font-bold text-slate-700">Thank you for your order with NJ Select Deals!</p>
         <p>
           Questions about your shipment or return requests? Contact our NJ SELECT DEALS team at{' '}
-          <strong>support@njselectdeals.com</strong> or call <strong>(800) 555-DEAL</strong>.
+          <strong>njselectdeals@gmail.com</strong> or call <strong>(800) 555-DEAL</strong>.
         </p>
         <p className="text-[10px] text-slate-400 pt-2">
           NJ Select Deals • 100 Route 17 North, Paramus, NJ 07652 • All Rights Reserved.

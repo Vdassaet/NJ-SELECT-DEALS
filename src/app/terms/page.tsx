@@ -65,7 +65,7 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-base font-black text-slate-900">5. Damaged, Defective, or Incorrect Shipments</h2>
           <p>
-            If a product arrives materially damaged, leaking, broken, defective, or incorrect, the customer must notify NJ Select Deals at <a href="mailto:support@njselectdeals.com" className="text-brand-600 font-bold hover:underline">support@njselectdeals.com</a> within <strong>48 hours of carrier delivery</strong>. Mandatory clear photographs of the damaged product, interior packaging, outer shipping carton, and the legible carrier shipping label must be provided. Original packaging must be retained until the investigation is complete. NJ Select Deals will review the claim and, where appropriate at its discretion, may offer a replacement, store credit, or refund. Refunds are not automatically guaranteed.
+            If a product arrives materially damaged, leaking, broken, defective, or incorrect, the customer must notify NJ Select Deals at <a href="mailto:njselectdeals@gmail.com" className="text-brand-600 font-bold hover:underline">njselectdeals@gmail.com</a> within <strong>48 hours of carrier delivery</strong>. Mandatory clear photographs of the damaged product, interior packaging, outer shipping carton, and the legible carrier shipping label must be provided. Original packaging must be retained until the investigation is complete. NJ Select Deals will review the claim and, where appropriate at its discretion, may offer a replacement, store credit, or refund. Refunds are not automatically guaranteed.
           </p>
         </section>
 

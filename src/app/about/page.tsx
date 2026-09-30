@@ -74,7 +74,7 @@ export default function AboutPage() {
           </p>
           <ul className="space-y-2 text-xs text-slate-600">
             <li><strong>Fulfillment &amp; Offices:</strong> 100 Route 17 North, Paramus, NJ 07652</li>
-            <li><strong>Support Email:</strong> support@njselectdeals.com</li>
+            <li><strong>Support Email:</strong> njselectdeals@gmail.com</li>
             <li><strong>Toll-Free Phone:</strong> (800) 555-DEAL</li>
           </ul>
         </div>

@@ -33,7 +33,7 @@ export async function getStoreEmailConfig(): Promise<StoreEmailConfig> {
     const storeEmail =
       settingsMap['store_email'] ||
       process.env.NEXT_PUBLIC_STORE_EMAIL ||
-      'support@njselectdeals.com';
+      'njselectdeals@gmail.com';
 
     return {
       storeName:
@@ -59,7 +59,7 @@ export async function getStoreEmailConfig(): Promise<StoreEmailConfig> {
   } catch (err) {
     return {
       storeName: process.env.NEXT_PUBLIC_STORE_NAME || 'NJ Select Deals',
-      storeEmail: process.env.NEXT_PUBLIC_STORE_EMAIL || 'support@njselectdeals.com',
+      storeEmail: process.env.NEXT_PUBLIC_STORE_EMAIL || 'njselectdeals@gmail.com',
       storePhone: process.env.NEXT_PUBLIC_STORE_PHONE || '(800) 555-DEAL',
       storeAddress: '100 Route 17 North, Paramus, NJ 07652',
       orderNotificationEmail: process.env.ADMIN_EMAIL || 'admin@njselectdeals.com',

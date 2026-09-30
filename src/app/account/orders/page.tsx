@@ -81,8 +81,8 @@ export default function CustomerOrdersPage() {
         <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3.5 py-2 text-[11px] text-slate-600 max-w-md">
           <span className="font-bold text-slate-800">Order Assistance: </span>
           Damaged or defective items must be reported within 48 hours of delivery with packaging photos to{' '}
-          <a href="mailto:support@njselectdeals.com" className="text-brand-600 font-bold hover:underline">
-            support@njselectdeals.com
+          <a href="mailto:njselectdeals@gmail.com" className="text-brand-600 font-bold hover:underline">
+            njselectdeals@gmail.com
           </a>
           . Read our{' '}
           <Link href="/returns" className="text-brand-600 font-bold hover:underline">
