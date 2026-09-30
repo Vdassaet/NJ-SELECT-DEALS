@@ -45,6 +45,7 @@ export interface CompleteOrderInput {
   total: number;
   notes?: string | null;
   couponCode?: string | null;
+  shippingMethod?: 'free' | 'fast';
   appliedPromotionIds?: string[] | null;
 }
 
@@ -92,7 +93,8 @@ export async function completePaidOrder(input: CompleteOrderInput) {
   // Ground truth recalculation prevents any client total/price tampering
   const authoritativePricing = await calculateOrderPricing(
     input.items.map((i) => ({ productId: i.productId, quantity: i.quantity, variantId: i.variantId })),
-    input.couponCode
+    input.couponCode,
+    { shippingMethod: input.shippingMethod }
   );
 
   const subtotal = authoritativePricing.subtotal;

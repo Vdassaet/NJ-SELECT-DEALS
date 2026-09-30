@@ -87,7 +87,7 @@ export async function getProductActivePromotions(
 export async function calculateOrderPricing(
   cartItems: { productId: string; quantity: number; variantId?: string | null }[],
   couponCode?: string | null,
-  options?: { now?: Date }
+  options?: { now?: Date; shippingMethod?: 'free' | 'fast' }
 ): Promise<OrderPricingResult> {
   const now = options?.now || new Date();
 
@@ -450,8 +450,8 @@ export async function calculateOrderPricing(
   );
 
   const qualifiesDefaultFreeShipping = subtotalAfterItemDiscounts >= DEFAULT_FREE_SHIPPING_THRESHOLD;
-  const isFreeShipping = Boolean(freeShippingPromo || qualifiesDefaultFreeShipping);
-  const shippingCost = isFreeShipping ? 0 : STANDARD_SHIPPING_COST;
+  const isFreeShipping = options?.shippingMethod === 'free' || Boolean(freeShippingPromo || qualifiesDefaultFreeShipping);
+  const shippingCost = options?.shippingMethod === 'fast' ? STANDARD_SHIPPING_COST : (isFreeShipping ? 0 : STANDARD_SHIPPING_COST);
 
   if (freeShippingPromo && !qualifiesDefaultFreeShipping) {
     appliedPromotionsMap.set(freeShippingPromo.id, {

@@ -108,14 +108,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Server-side financial calculations (Never trust client totals)
-    const { couponCode } = body;
+    const { couponCode, shippingMethod } = body;
     const pricing = await calculateOrderPricing(
       items.map((i: any) => ({
         productId: i.id || i.productId,
         quantity: i.quantity || 1,
         variantId: i.variantId || null,
       })),
-      couponCode
+      couponCode,
+      { shippingMethod }
     );
 
     const subtotal = pricing.subtotal;
@@ -170,7 +171,7 @@ export async function POST(request: NextRequest) {
           tax,
           total,
           notes: notes?.trim() || null,
-          couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null,
+          couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null, shippingMethod,
           appliedPromotionIds: pricing.appliedPromotions.map((p) => p.id),
         });
 
@@ -215,8 +216,8 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'Standard Shipping',
-              description: 'Fast delivery across New Jersey and Continental US',
+              name: shippingMethod === 'free' ? 'Free Standard Shipping' : 'Fast Shipping',
+              description: shippingMethod === 'free' ? 'Estimated delivery 6-8 business days' : 'Estimated delivery 2-4 business days',
             },
             unit_amount: Math.round(shippingCost * 100),
           },
@@ -336,7 +337,7 @@ export async function POST(request: NextRequest) {
         tax,
         total,
         notes: notes?.trim() || null,
-        couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null,
+        couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null, shippingMethod,
         appliedPromotionIds: pricing.appliedPromotions.map((p) => p.id),
       },
     });

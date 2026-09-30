@@ -39,6 +39,7 @@ export default function CheckoutPage() {
   const [country, setCountry] = useState('US');
   const [notes, setNotes] = useState('');
   const [saveAddress, setSaveAddress] = useState(false);
+  const [shippingMethod, setShippingMethod] = useState<'free' | 'fast'>('fast');
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -50,7 +51,8 @@ export default function CheckoutPage() {
   const effectiveSubtotal = Math.max(0, subtotal - (appliedCoupon?.discountAmount || 0));
   const taxRate = 0.06625;
   const taxEstimate = Math.round(effectiveSubtotal * taxRate * 100) / 100;
-  const orderTotalWithTax = Math.round((effectiveSubtotal + shippingEstimate + taxEstimate) * 100) / 100;
+  const actualShippingCost = shippingMethod === 'fast' ? 4.99 : 0;
+  const orderTotalWithTax = Math.round((effectiveSubtotal + actualShippingCost + taxEstimate) * 100) / 100;
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,7 +194,7 @@ export default function CheckoutPage() {
           email: email.trim().toLowerCase(),
           phone: phone.trim() || null,
           notes: notes.trim() || null,
-          couponCode: appliedCoupon?.code || undefined,
+          couponCode: appliedCoupon?.code || undefined, shippingMethod,
         }),
       });
 
@@ -471,10 +473,46 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* Shipping Method */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h2 className="text-base font-black text-slate-900 pb-2 border-b border-slate-100">
+              3. Shipping Method
+            </h2>
+            <div className="space-y-3">
+              <label className={lex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all  + (shippingMethod === 'free' ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300')}>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-300">
+                    {shippingMethod === 'free' && <div className="w-3 h-3 rounded-full bg-brand-600" />}
+                  </div>
+                  <div>
+                    <span className="block text-sm font-bold text-slate-900">Free Shipping</span>
+                    <span className="block text-xs text-slate-500">Estimated delivery: 6-8 business days</span>
+                  </div>
+                </div>
+                <span className="text-sm font-black text-emerald-600">FREE</span>
+                <input type="radio" name="shipping" value="free" checked={shippingMethod === 'free'} onChange={() => setShippingMethod('free')} className="hidden" />
+              </label>
+
+              <label className={lex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all  + (shippingMethod === 'fast' ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300')}>
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-300">
+                    {shippingMethod === 'fast' && <div className="w-3 h-3 rounded-full bg-brand-600" />}
+                  </div>
+                  <div>
+                    <span className="block text-sm font-bold text-slate-900">Fast Shipping</span>
+                    <span className="block text-xs text-slate-500">Estimated delivery: 2-4 business days</span>
+                  </div>
+                </div>
+                <span className="text-sm font-black text-slate-900">.99</span>
+                <input type="radio" name="shipping" value="fast" checked={shippingMethod === 'fast'} onChange={() => setShippingMethod('fast')} className="hidden" />
+              </label>
+            </div>
+          </div>
+
           {/* Delivery Notes */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h2 className="text-base font-black text-slate-900 pb-2 border-b border-slate-100">
-              3. Delivery Instructions (Optional)
+              4. Delivery Instructions (Optional)
             </h2>
             <textarea
               rows={2}
@@ -574,10 +612,10 @@ export default function CheckoutPage() {
             <div className="flex justify-between text-slate-600">
               <span>Shipping</span>
               <span className="font-bold text-slate-900">
-                {shippingEstimate === 0 ? (
+                {actualShippingCost === 0 ? (
                   <span className="text-emerald-700 font-black uppercase">Free</span>
                 ) : (
-                  formatPrice(shippingEstimate)
+                  formatPrice(actualShippingCost)
                 )}
               </span>
             </div>
