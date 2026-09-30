@@ -140,11 +140,6 @@ export function Footer() {
                   Terms of Service
                 </Link>
               </li>
-              <li className="pt-2">
-                <Link href="/admin" className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline">
-                  Admin Portal
-                </Link>
-              </li>
             </ul>
           </div>
 
