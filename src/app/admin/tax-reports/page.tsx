@@ -35,21 +35,26 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
   let netCustomerPayments = 0;
 
   for (const o of allOrders) {
-    const isCancelledUnpaid = o.status === 'CANCELLED' && o.paymentStatus !== 'REFUNDED' && o.paymentStatus !== 'PARTIALLY_REFUNDED' && o.paymentStatus !== 'PAID';
-    if (isCancelledUnpaid) { totalCancelledOrders++; continue; }
+    const isCancelled = o.status === 'CANCELLED';
 
-    if (o.paymentStatus === 'REFUNDED') totalRefundedOrders++;
-    else if (o.paymentStatus === 'PARTIALLY_REFUNDED') totalPartiallyRefundedOrders++;
-    else if (o.paymentStatus === 'PAID') totalCompletedOrders++;
+    if (isCancelled) {
+      totalCancelledOrders++;
+    } else {
+      if (o.paymentStatus === 'REFUNDED') totalRefundedOrders++;
+      else if (o.paymentStatus === 'PARTIALLY_REFUNDED') totalPartiallyRefundedOrders++;
+      else if (o.paymentStatus === 'PAID') totalCompletedOrders++;
+    }
 
-    const oRefundedAmount = o.refunds.reduce((sum, r) => sum + r.amountRefunded, 0);
-    const oTaxRefunded = o.refunds.reduce((sum, r) => sum + r.taxRefunded, 0);
-    const finalProductPrice = (o.taxableSubtotal + o.nonTaxableSubtotal + o.discount) - o.discount;
+    const oRefundedAmount = isCancelled ? 0 : o.refunds.reduce((sum, r) => sum + r.amountRefunded, 0);
+    const oTaxRefunded = isCancelled ? 0 : o.refunds.reduce((sum, r) => sum + r.taxRefunded, 0);
+    const finalProductPrice = isCancelled ? 0 : o.subtotal;
+    const orderTax = isCancelled ? 0 : o.tax;
+    const orderShipping = isCancelled ? 0 : o.shippingCost;
 
     netSales += (finalProductPrice - oRefundedAmount);
-    grossTaxCollected += o.tax;
+    grossTaxCollected += orderTax;
     taxRefundedTotal += oTaxRefunded;
-    const totalOrderPaid = finalProductPrice + o.shippingCost + o.tax;
+    const totalOrderPaid = finalProductPrice + orderShipping + orderTax;
     netCustomerPayments += (totalOrderPaid - (oRefundedAmount + oTaxRefunded));
   }
 
@@ -180,11 +185,13 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {allOrders.map(o => {
-                const oRefunds = o.refunds.reduce((sum, r) => sum + r.amountRefunded, 0);
-                const oTaxRefunds = o.refunds.reduce((sum, r) => sum + r.taxRefunded, 0);
-                const finalSellingPrice = (o.taxableSubtotal + o.nonTaxableSubtotal + o.discount) - o.discount;
-                const netPaid = (finalSellingPrice + o.shippingCost + o.tax) - (oRefunds + oTaxRefunds);
-                const isCancelledUnpaid = o.status === 'CANCELLED' && o.paymentStatus !== 'REFUNDED' && o.paymentStatus !== 'PARTIALLY_REFUNDED' && o.paymentStatus !== 'PAID';
+                const isCancelled = o.status === 'CANCELLED';
+                const oRefunds = isCancelled ? 0 : o.refunds.reduce((sum, r) => sum + r.amountRefunded, 0);
+                const oTaxRefunds = isCancelled ? 0 : o.refunds.reduce((sum, r) => sum + r.taxRefunded, 0);
+                const finalSellingPrice = isCancelled ? 0 : o.subtotal;
+                const orderTax = isCancelled ? 0 : o.tax;
+                const orderShipping = isCancelled ? 0 : o.shippingCost;
+                const netPaid = isCancelled ? 0 : (finalSellingPrice + orderShipping + orderTax) - (oRefunds + oTaxRefunds);
                 return (
                   <tr key={o.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
@@ -192,24 +199,24 @@ export default async function TaxReportsPage({ searchParams }: { searchParams: {
                       <div className="text-[10px] text-slate-400">{o.createdAt.toLocaleDateString()}</div>
                     </td>
                     <td className="px-4 py-3 truncate max-w-[150px]">{o.guestEmail}</td>
-                    <td className="px-4 py-3 text-right font-mono">{isCancelledUnpaid ? '$0.00' : '$' + finalSellingPrice.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{isCancelledUnpaid ? '$0.00' : '$' + o.shippingCost.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{isCancelledUnpaid ? '$0.00' : '$' + (o.taxableSubtotal + o.taxableShipping).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{isCancelledUnpaid ? '$0.00' : '$' + o.tax.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{'$' + finalSellingPrice.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{'$' + orderShipping.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{'$' + finalSellingPrice.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{'$' + orderTax.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-mono text-red-500">
                       {oRefunds + oTaxRefunds > 0 ? '-$' + (oRefunds + oTaxRefunds).toFixed(2) : '-'}
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
-                      {isCancelledUnpaid ? '$0.00' : '$' + netPaid.toFixed(2)}
+                      {'$' + netPaid.toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={'px-2 py-1 rounded-md text-[10px] font-bold ' + (
-                        isCancelledUnpaid ? 'bg-slate-100 text-slate-600' :
+                        isCancelled ? 'bg-slate-100 text-slate-600' :
                         o.paymentStatus === 'REFUNDED' ? 'bg-red-100 text-red-700' :
                         o.paymentStatus === 'PARTIALLY_REFUNDED' ? 'bg-orange-100 text-orange-700' :
                         'bg-emerald-100 text-emerald-700'
                       )}>
-                        {o.paymentStatus}
+                        {isCancelled ? 'CANCELLED' : o.paymentStatus}
                       </span>
                     </td>
                   </tr>
