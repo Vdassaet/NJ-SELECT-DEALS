@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const subtotal = Math.max(0, parseFloat(searchParams.get('subtotal') || '0'));
     const weight = Math.max(0, parseFloat(searchParams.get('weight') || '1'));
     const state = (searchParams.get('state') || 'NJ').slice(0, 50);
-    const postalCode = (searchParams.get('postalCode') || '07652').slice(0, 20);
+    const postalCode = (searchParams.get('postalCode') || '07055').slice(0, 20);
 
     const settingsList = await prisma.settings.findMany();
     const settingsMap: Record<string, string> = {};

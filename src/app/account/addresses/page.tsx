@@ -154,7 +154,7 @@ export default function CustomerAddressesPage() {
                 required
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
-                placeholder="100 Route 17 North"
+                placeholder="123 Main St"
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl"
               />
             </div>
@@ -177,7 +177,7 @@ export default function CustomerAddressesPage() {
                 required
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Paramus"
+                placeholder="Passaic"
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl"
               />
             </div>
@@ -201,7 +201,7 @@ export default function CustomerAddressesPage() {
                 required
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
-                placeholder="07652"
+                placeholder="07055"
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl"
               />
             </div>

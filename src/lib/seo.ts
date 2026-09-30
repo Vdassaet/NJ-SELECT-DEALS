@@ -9,13 +9,10 @@ export const STORE_INFO = {
     'NJ Select Deals is your direct single-store e-commerce destination for authentic, premium shampoos, hair care, skin care, creams, artisanal chocolates, and personal care essentials.',
   url: SITE_URL,
   logo: `${SITE_URL}/icon.png`,
-  telephone: '+1-800-555-3325',
   email: 'njselectdeals@gmail.com',
   address: {
-    streetAddress: '100 Route 17 North',
-    addressLocality: 'Paramus',
+    addressLocality: 'Passaic',
     addressRegion: 'NJ',
-    postalCode: '07652',
     addressCountry: 'US',
   },
   geo: {

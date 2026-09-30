@@ -8,7 +8,7 @@ import { ShieldCheck, Truck, Award, Users, CheckCircle2 } from 'lucide-react';
 export const metadata: Metadata = generateSEOMetadata({
   title: 'About NJ Select Deals | Direct Single-Store E-Commerce',
   description:
-    'Learn about NJ Select Deals. Headquartered in Paramus, New Jersey, providing authentic hair care, skincare, confectionery, and personal care products with direct fulfillment.',
+    'Learn about NJ Select Deals. Headquartered in Passaic, New Jersey, providing authentic hair care, skincare, confectionery, and personal care products with direct fulfillment.',
   path: '/about',
 });
 
@@ -41,7 +41,7 @@ export default function AboutPage() {
             Founded with a commitment to quality and transparency, <strong>NJ Select Deals</strong> is a dedicated single-store merchant. Unlike open multi-vendor marketplaces filled with questionable unauthorized sellers and counterfeits, every product listed in our store is sourced directly through certified manufacturers, verified distributors, and authorized brand representatives.
           </p>
           <p>
-            Operating out of our climate-controlled fulfillment warehouse in <strong>Paramus, New Jersey</strong>, we handle inventory directly, inspect every batch for expiration dates, and package orders with custom thermal and protective packaging for delicate cosmetics and confectionery.
+            Operating out of our climate-controlled fulfillment warehouse in <strong>Passaic, New Jersey</strong>, we handle inventory directly, inspect every batch for expiration dates, and package orders with custom thermal and protective packaging for delicate cosmetics and confectionery.
           </p>
         </div>
 
@@ -73,9 +73,9 @@ export default function AboutPage() {
             Have a question about an order or product ingredients? Our dedicated customer care team is available 7 days a week:
           </p>
           <ul className="space-y-2 text-xs text-slate-600">
-            <li><strong>Fulfillment &amp; Offices:</strong> 100 Route 17 North, Paramus, NJ 07652</li>
+            <li><strong>Fulfillment &amp; Offices:</strong> Passaic, New Jersey, USA</li>
             <li><strong>Support Email:</strong> njselectdeals@gmail.com</li>
-            <li><strong>Toll-Free Phone:</strong> (800) 555-DEAL</li>
+            <li><strong>Toll-Free Phone:</strong> </li>
           </ul>
         </div>
       </div>

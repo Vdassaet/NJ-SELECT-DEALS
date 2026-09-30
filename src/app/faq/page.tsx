@@ -18,7 +18,7 @@ const faqs = [
   },
   {
     q: 'How fast will my order ship?',
-    a: 'Orders placed before 2:00 PM EST Monday through Friday ship the same business day from our Paramus, NJ warehouse. Standard delivery takes 2 to 5 business days nationwide.',
+    a: 'Orders placed before 2:00 PM EST Monday through Friday ship the same business day from our Passaic, NJ warehouse. Standard delivery takes 2 to 5 business days nationwide.',
   },
   {
     q: 'How do I qualify for Free Shipping?',

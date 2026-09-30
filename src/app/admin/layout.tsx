@@ -194,7 +194,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="p-4 border-t border-slate-800/80">
             <div className="p-3 rounded-xl bg-slate-800/40 border border-slate-800 text-[11px] text-slate-400 space-y-1">
               <p className="font-bold text-slate-200">NJ Select Deals</p>
-              <p className="text-[10px] text-slate-400">Paramus, New Jersey • Secure Store Management</p>
+              <p className="text-[10px] text-slate-400">Passaic, New Jersey • Secure Store Management</p>
             </div>
           </div>
         </aside>

@@ -7,7 +7,7 @@ import { Truck, CheckCircle2, ShieldCheck, MapPin } from 'lucide-react';
 export const metadata: Metadata = generateSEOMetadata({
   title: 'Shipping Policy & Delivery Rates | NJ Select Deals',
   description:
-    'Learn about NJ Select Deals shipping speeds, carrier options (USPS, UPS, FedEx), free shipping thresholds over $50, and transit times direct from Paramus, NJ.',
+    'Learn about NJ Select Deals shipping speeds, carrier options (USPS, UPS, FedEx), free shipping thresholds over $50, and transit times direct from Passaic, NJ.',
   path: '/shipping',
 });
 
@@ -29,7 +29,7 @@ export default function ShippingPage() {
           Shipping Policy &amp; Delivery Information
         </h1>
         <p className="text-sm text-slate-600 max-w-xl mx-auto">
-          Fast, reliable direct fulfillment from our warehouse in Paramus, New Jersey.
+          Fast, reliable direct fulfillment from our warehouse in Passaic, New Jersey.
         </p>
       </div>
 

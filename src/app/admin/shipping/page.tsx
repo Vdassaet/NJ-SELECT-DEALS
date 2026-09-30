@@ -50,9 +50,9 @@ export default function AdminShippingPage() {
     order_value_tier2_fee: '4.99',
 
     // Zones & Methods
-    shipping_origin_zip: '07652',
+    shipping_origin_zip: '07055',
     shipping_origin_state: 'NJ',
-    shipping_origin_city: 'Paramus',
+    shipping_origin_city: 'Passaic',
     zone_domestic_enabled: 'true',
     zone_extended_enabled: 'true', // AK, HI, PR
     zone_extended_surcharge: '5.00',
@@ -407,7 +407,7 @@ export default function AdminShippingPage() {
                   onChange={(e) => handleChange('shipping_origin_zip', e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-brand-500"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">Paramus, New Jersey (07652).</p>
+                <p className="text-[11px] text-slate-400 mt-1">Passaic, New Jersey (07055).</p>
               </div>
 
               <div>

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     'chocolates',
     'candy',
     'personal care',
-    'Paramus New Jersey',
+    'Passaic New Jersey',
     'authentic e-commerce',
   ],
   alternates: {

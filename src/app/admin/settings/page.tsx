@@ -28,8 +28,8 @@ export default function AdminSettingsPage() {
     store_logo: '',
     store_email: 'njselectdeals@gmail.com',
     order_notification_email: 'orders@njselectdeals.com',
-    store_phone: '(800) 555-DEAL',
-    store_address: '100 Route 17 North, Paramus, NJ 07652',
+    store_phone: '',
+    store_address: 'Passaic, New Jersey, USA',
     announcement_text:
       'Free Shipping on orders over $50 | Quality Personal Care, Chocolates & Treats Delivered to Your Door',
 
@@ -43,7 +43,7 @@ export default function AdminSettingsPage() {
     free_shipping_threshold: '50',
     standard_shipping_rate: '4.99',
     expedited_shipping_rate: '12.99',
-    shipping_origin_zip: '07652',
+    shipping_origin_zip: '07055',
 
     // Payment
     stripe_enabled: 'true',

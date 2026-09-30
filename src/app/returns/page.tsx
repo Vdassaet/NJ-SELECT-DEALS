@@ -51,7 +51,7 @@ export default function ReturnsPage() {
           At NJ Select Deals, we take consumer safety, hygiene, and product integrity seriously. Please review our policy regarding returns, refunds, damaged shipments, and order cancellations below.
         </p>
         <p className="text-[11px] font-semibold text-slate-400">
-          Last Updated: September 2026 • Paramus, New Jersey
+          Last Updated: September 2026 • Passaic, New Jersey
         </p>
       </div>
 
@@ -295,11 +295,11 @@ export default function ReturnsPage() {
               </div>
               <div className="flex items-center space-x-1.5">
                 <Phone className="w-4 h-4 text-brand-600" />
-                <span>(800) 555-DEAL</span>
+                <span></span>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 pt-1">
-              NJ Select Deals LLC • 100 Route 17 North, Paramus, NJ 07652
+              NJ Select Deals LLC • Passaic, New Jersey, USA
             </p>
           </div>
         </section>

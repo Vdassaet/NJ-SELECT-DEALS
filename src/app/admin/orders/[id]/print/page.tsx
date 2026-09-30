@@ -92,8 +92,8 @@ export default function PrintableOrderPage({ params }: { params: { id: string } 
               </div>
               <h1 className="text-2xl font-black tracking-tight text-slate-900">NJ SELECT DEALS</h1>
             </div>
-            <p className="text-xs text-slate-600">Paramus Distribution Center • 100 Route 17 North, Paramus, NJ 07652</p>
-            <p className="text-xs text-slate-600">Customer Support: (800) 555-DEAL • orders@njselectdeals.com</p>
+            <p className="text-xs text-slate-600">Passaic Distribution Center • Passaic, New Jersey, USA</p>
+            <p className="text-xs text-slate-600">Customer Support:  • orders@njselectdeals.com</p>
             <p className="text-[11px] text-slate-500">Store Website: https://njselectdeals.com</p>
           </div>
 
@@ -245,10 +245,10 @@ export default function PrintableOrderPage({ params }: { params: { id: string } 
         <p className="font-bold text-slate-700">Thank you for your order with NJ Select Deals!</p>
         <p>
           Questions about your shipment or return requests? Contact our NJ SELECT DEALS team at{' '}
-          <strong>njselectdeals@gmail.com</strong> or call <strong>(800) 555-DEAL</strong>.
+          <strong>njselectdeals@gmail.com</strong> or call <strong></strong>.
         </p>
         <p className="text-[10px] text-slate-400 pt-2">
-          NJ Select Deals • 100 Route 17 North, Paramus, NJ 07652 • All Rights Reserved.
+          NJ Select Deals • Passaic, New Jersey, USA • All Rights Reserved.
         </p>
       </div>
     </div>
