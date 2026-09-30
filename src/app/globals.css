@@ -51,3 +51,37 @@
 input:focus, select:focus, textarea:focus {
   @apply border-brand-500 ring-1 ring-brand-500;
 }
+
+@media print {
+  /* Hide Next.js dev tools, sidebars, navigations */
+  nav, aside, footer, header, [data-testid="sidebar"] {
+    display: none !important;
+  }
+  
+  /* Reset margins for the main content to take full width */
+  main, body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: white !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Force print background colors for cards */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .print\:break-inside-avoid {
+    break-inside: avoid !important;
+  }
+  
+  .print\:break-before-auto {
+    break-before: auto !important;
+  }
+}
