@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { formatPrice, formatDate } from '@/lib/utils';
-import { getInventoryMetrics, getRecentInventoryLogs } from '@/lib/inventory-service';
+import { getInventoryMetrics } from '@/lib/inventory-service';
+import SalesPerformanceInteractive from '@/components/admin/SalesPerformanceInteractive';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,16 +41,21 @@ async function getAdminMetrics() {
     const startOf30DaysAgo = new Date();
     startOf30DaysAgo.setDate(now.getDate() - 30);
 
+    // Filter to strictly exclude cancelled and failed orders from revenue metrics
+    const validSalesFilter = {
+      status: { not: 'CANCELLED' as const },
+      paymentStatus: { notIn: ['CANCELLED', 'FAILED'] as const },
+    };
+
     const [
       allOrders,
-      todayOrders,
-      weeklyOrders,
-      monthlyOrders,
+      validOrders,
       totalUsers,
       recentOrders,
       inventoryMetrics,
       allOrderItems,
     ] = await Promise.all([
+      // All orders for pipeline count
       prisma.order.findMany({
         select: {
           id: true,
@@ -59,17 +65,18 @@ async function getAdminMetrics() {
           createdAt: true,
         },
       }),
+      // Successfully executed orders for sales financial metrics
       prisma.order.findMany({
-        where: { createdAt: { gte: startOfToday } },
-        select: { total: true },
-      }),
-      prisma.order.findMany({
-        where: { createdAt: { gte: startOf7DaysAgo } },
-        select: { total: true },
-      }),
-      prisma.order.findMany({
-        where: { createdAt: { gte: startOf30DaysAgo } },
-        select: { total: true },
+        where: validSalesFilter,
+        select: {
+          id: true,
+          total: true,
+          amountRefunded: true,
+          status: true,
+          paymentStatus: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
       }),
       prisma.user.count({ where: { role: 'CUSTOMER' } }),
       prisma.order.findMany({
@@ -81,7 +88,11 @@ async function getAdminMetrics() {
         },
       }),
       getInventoryMetrics(),
+      // Top Products must strictly come from completed/non-cancelled purchases
       prisma.orderItem.findMany({
+        where: {
+          order: validSalesFilter,
+        },
         take: 100,
         select: {
           productId: true,
@@ -93,11 +104,21 @@ async function getAdminMetrics() {
       }),
     ]);
 
-    // Sales sums
-    const todaySales = todayOrders.reduce((sum, ord) => sum + ord.total, 0);
-    const weeklySales = weeklyOrders.reduce((sum, ord) => sum + ord.total, 0);
-    const monthlySales = monthlyOrders.reduce((sum, ord) => sum + ord.total, 0);
-    const totalRevenue = allOrders.reduce((sum, ord) => sum + ord.total, 0);
+    const getNetOrderAmount = (ord: { total: number; amountRefunded?: number | null; paymentStatus?: string }) => {
+      if (ord.paymentStatus === 'REFUNDED') return 0;
+      return Math.max(0, ord.total - (ord.amountRefunded || 0));
+    };
+
+    // Filter valid orders by timeframe
+    const todayOrders = validOrders.filter((o) => o.createdAt >= startOfToday);
+    const weeklyOrders = validOrders.filter((o) => o.createdAt >= startOf7DaysAgo);
+    const monthlyOrders = validOrders.filter((o) => o.createdAt >= startOf30DaysAgo);
+
+    // Precise sales sums excluding cancelled orders
+    const todaySales = Math.round(todayOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
+    const weeklySales = Math.round(weeklyOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
+    const monthlySales = Math.round(monthlyOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
+    const totalRevenue = Math.round(validOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
 
     // Order status pipeline breakdown
     let pendingOrders = 0;
@@ -126,6 +147,101 @@ async function getAdminMetrics() {
       }
     });
 
+    // Chart Buckets: Today (8 intervals of 3 hours)
+    const todayBuckets = [
+      { label: '12am', startH: 0, endH: 3 },
+      { label: '3am', startH: 3, endH: 6 },
+      { label: '6am', startH: 6, endH: 9 },
+      { label: '9am', startH: 9, endH: 12 },
+      { label: '12pm', startH: 12, endH: 15 },
+      { label: '3pm', startH: 15, endH: 18 },
+      { label: '6pm', startH: 18, endH: 21 },
+      { label: '9pm', startH: 21, endH: 24 },
+    ].map((b) => {
+      const matching = todayOrders.filter((o) => {
+        const h = o.createdAt.getHours();
+        return h >= b.startH && h < b.endH;
+      });
+      return {
+        label: b.label,
+        amount: Math.round(matching.reduce((sum, o) => sum + getNetOrderAmount(o), 0) * 100) / 100,
+        orderCount: matching.length,
+      };
+    });
+
+    // Chart Buckets: Weekly (last 7 calendar days)
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weeklyBuckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+      const matching = validOrders.filter((o) => o.createdAt >= dayStart && o.createdAt <= dayEnd);
+      const dayName = i === 0 ? 'Today' : daysOfWeek[d.getDay()];
+      const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+
+      weeklyBuckets.push({
+        label: dayName,
+        sublabel: dateStr,
+        amount: Math.round(matching.reduce((sum, o) => sum + getNetOrderAmount(o), 0) * 100) / 100,
+        orderCount: matching.length,
+      });
+    }
+
+    // Chart Buckets: Monthly (6 intervals of 5 days)
+    const monthlyBuckets = [];
+    for (let i = 5; i >= 0; i--) {
+      const startDay = new Date(now);
+      startDay.setDate(now.getDate() - (i + 1) * 5);
+      const endDay = new Date(now);
+      endDay.setDate(now.getDate() - i * 5);
+
+      const matching = validOrders.filter((o) => o.createdAt >= startDay && o.createdAt <= endDay);
+      const label = `${endDay.getMonth() + 1}/${endDay.getDate()}`;
+      monthlyBuckets.push({
+        label,
+        sublabel: `${startDay.getMonth() + 1}/${startDay.getDate()} - ${endDay.getMonth() + 1}/${endDay.getDate()}`,
+        amount: Math.round(matching.reduce((sum, o) => sum + getNetOrderAmount(o), 0) * 100) / 100,
+        orderCount: matching.length,
+      });
+    }
+
+    // Chart Buckets: All-time historical
+    const allTimeBuckets: { label: string; amount: number; orderCount: number }[] = [];
+    if (validOrders.length > 0) {
+      const dateMap = new Map<string, { amount: number; count: number }>();
+      validOrders.forEach((o) => {
+        const d = new Date(o.createdAt);
+        const key = `${d.getMonth() + 1}/${d.getDate()}`;
+        const existing = dateMap.get(key) || { amount: 0, count: 0 };
+        existing.amount += getNetOrderAmount(o);
+        existing.count += 1;
+        dateMap.set(key, existing);
+      });
+
+      dateMap.forEach((val, key) => {
+        allTimeBuckets.push({
+          label: key,
+          amount: Math.round(val.amount * 100) / 100,
+          orderCount: val.count,
+        });
+      });
+    }
+
+    if (allTimeBuckets.length < 4) {
+      weeklyBuckets.forEach((wb) => {
+        if (!allTimeBuckets.some((at) => at.label === wb.sublabel || at.label === wb.label)) {
+          allTimeBuckets.push({
+            label: wb.sublabel || wb.label,
+            amount: wb.amount,
+            orderCount: wb.orderCount,
+          });
+        }
+      });
+    }
+
     // Top Products aggregation
     const productMap: Record<string, { id: string; name: string; image: string | null; units: number; revenue: number }> = {};
     allOrderItems.forEach((item) => {
@@ -151,6 +267,10 @@ async function getAdminMetrics() {
       weeklySales,
       monthlySales,
       totalRevenue,
+      validOrdersCount: validOrders.length,
+      todayOrdersCount: todayOrders.length,
+      weeklyOrdersCount: weeklyOrders.length,
+      monthlyOrdersCount: monthlyOrders.length,
       totalOrders: allOrders.length,
       pendingOrders,
       processingOrders,
@@ -161,6 +281,12 @@ async function getAdminMetrics() {
       recentOrders,
       inventoryMetrics,
       topProducts,
+      chartData: {
+        today: todayBuckets,
+        weekly: weeklyBuckets,
+        monthly: monthlyBuckets,
+        allTime: allTimeBuckets,
+      },
     };
   } catch (error) {
     console.error('Error loading admin dashboard metrics:', error);
@@ -169,6 +295,10 @@ async function getAdminMetrics() {
       weeklySales: 0,
       monthlySales: 0,
       totalRevenue: 0,
+      validOrdersCount: 0,
+      todayOrdersCount: 0,
+      weeklyOrdersCount: 0,
+      monthlyOrdersCount: 0,
       totalOrders: 0,
       pendingOrders: 0,
       processingOrders: 0,
@@ -185,6 +315,12 @@ async function getAdminMetrics() {
         inventoryValuation: 0,
       },
       topProducts: [],
+      chartData: {
+        today: [],
+        weekly: [],
+        monthly: [],
+        allTime: [],
+      },
     };
   }
 }
@@ -232,71 +368,24 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* SALES PERFORMANCE SECTION: Today, Weekly, Monthly, Gross Revenue */}
-      <div>
-        <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center space-x-1.5">
-          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Sales Velocity & Performance</span>
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Today's Sales */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 relative overflow-hidden">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Today&apos;s Sales</span>
-              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                <Calendar className="w-4 h-4" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-slate-900">{formatPrice(metrics.todaySales)}</p>
-            <span className="text-[11px] text-emerald-600 font-semibold flex items-center space-x-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>Current 24h cycle</span>
-            </span>
-          </div>
-
-          {/* Weekly Sales */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 relative overflow-hidden">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Weekly Sales (7d)</span>
-              <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-                <DollarSign className="w-4 h-4" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-slate-900">{formatPrice(metrics.weeklySales)}</p>
-            <span className="text-[11px] text-slate-400 block">Past 7 days volume</span>
-          </div>
-
-          {/* Monthly Sales */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 relative overflow-hidden">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Monthly Sales (30d)</span>
-              <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                <BarChart3 className="w-4 h-4" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-slate-900">{formatPrice(metrics.monthlySales)}</p>
-            <span className="text-[11px] text-slate-400 block">Rolling 30-day window</span>
-          </div>
-
-          {/* Total Revenue */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2 relative overflow-hidden">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Gross Sales</span>
-              <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-                <Sparkles className="w-4 h-4" />
-              </div>
-            </div>
-            <p className="text-2xl font-black text-slate-900">{formatPrice(metrics.totalRevenue)}</p>
-            <span className="text-[11px] text-slate-400 block">From {metrics.totalOrders} total orders</span>
-          </div>
-        </div>
-      </div>
+      {/* SALES PERFORMANCE INTERACTIVE SECTION: Today, Weekly, Monthly, Gross Sales with Charts */}
+      <SalesPerformanceInteractive
+        todaySales={metrics.todaySales}
+        weeklySales={metrics.weeklySales}
+        monthlySales={metrics.monthlySales}
+        grossSales={metrics.totalRevenue}
+        validOrdersCount={metrics.validOrdersCount}
+        todayOrdersCount={metrics.todayOrdersCount}
+        weeklyOrdersCount={metrics.weeklyOrdersCount}
+        monthlyOrdersCount={metrics.monthlyOrdersCount}
+        chartData={metrics.chartData}
+      />
 
       {/* ORDER PIPELINE SECTION: Total, Pending, Processing, Shipped, Delivered */}
       <div>
         <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center space-x-1.5">
           <ShoppingCart className="w-3.5 h-3.5 text-blue-600" />
-          <span>Fulfillment & Order Pipeline</span>
+          <span>Fulfillment &amp; Order Pipeline</span>
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           {/* Total Orders */}
@@ -470,7 +559,7 @@ export default async function AdminDashboardPage() {
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">Top Products</h2>
-              <p className="text-[11px] text-slate-400 mt-0.5">Bestselling items by volume</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Bestselling items from completed sales</p>
             </div>
             <Link
               href="/admin/products"

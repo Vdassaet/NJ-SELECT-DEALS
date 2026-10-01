@@ -81,24 +81,29 @@ export async function GET(request: NextRequest) {
     };
 
     orders.forEach((ord) => {
-      grossSales += ord.total;
-      totalDiscount += ord.discount;
-      totalTax += ord.tax;
-      totalShipping += ord.shippingCost;
-
-      if (ord.paymentStatus === 'REFUNDED') {
-        totalRefunds += ord.total;
-        refundedOrdersCount += 1;
-      }
-
       if (orderStatusCounts[ord.status] !== undefined) {
         orderStatusCounts[ord.status] += 1;
       }
+
+      const isCancelled = ord.status === 'CANCELLED' || ord.paymentStatus === 'CANCELLED' || ord.paymentStatus === 'FAILED';
+      if (!isCancelled) {
+        grossSales += ord.total;
+        totalDiscount += ord.discount;
+        totalTax += ord.tax;
+        totalShipping += ord.shippingCost;
+
+        if (ord.paymentStatus === 'REFUNDED') {
+          totalRefunds += ord.total;
+          refundedOrdersCount += 1;
+        } else if (ord.amountRefunded > 0) {
+          totalRefunds += ord.amountRefunded;
+        }
+      }
     });
 
-    netSales = grossSales - totalRefunds;
-    const completedOrders = orders.filter((o) => o.status !== 'CANCELLED');
-    const averageOrderValue = completedOrders.length > 0 ? (grossSales - totalRefunds) / completedOrders.length : 0;
+    netSales = Math.max(0, grossSales - totalRefunds);
+    const completedOrders = orders.filter((o) => o.status !== 'CANCELLED' && o.paymentStatus !== 'CANCELLED' && o.paymentStatus !== 'FAILED');
+    const averageOrderValue = completedOrders.length > 0 ? netSales / completedOrders.length : 0;
 
     // 5. Product Sales Aggregation
     const productSalesMap: Record<string, { id: string; name: string; sku: string; unitsSold: number; revenue: number }> = {};
