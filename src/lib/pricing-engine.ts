@@ -454,7 +454,7 @@ export async function calculateOrderPricing(
   );
 
   const qualifiesDefaultFreeShipping = subtotalAfterItemDiscounts >= DEFAULT_FREE_SHIPPING_THRESHOLD;
-  const isFreeShipping = options?.shippingMethod === 'free' || Boolean(freeShippingPromo || qualifiesDefaultFreeShipping);
+  const isFreeShipping = (options?.shippingMethod === 'free' && qualifiesDefaultFreeShipping) || Boolean(freeShippingPromo);
   const shippingCost = options?.shippingMethod === 'fast' ? STANDARD_SHIPPING_COST : (isFreeShipping ? 0 : STANDARD_SHIPPING_COST);
 
   if (freeShippingPromo && !qualifiesDefaultFreeShipping) {

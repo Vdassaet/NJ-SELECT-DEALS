@@ -242,6 +242,9 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         mode: 'payment',
         customer_email: email.trim().toLowerCase(),
+        payment_intent_data: {
+          receipt_email: email.trim().toLowerCase(),
+        },
         client_reference_id: sessionUser?.id || undefined,
         line_items: lineItems,
         metadata: {
