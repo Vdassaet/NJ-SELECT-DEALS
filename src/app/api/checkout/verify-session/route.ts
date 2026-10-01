@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         total: parseFloat(metadata.total || '0'),
         notes: metadata.notes || null,
         couponCode: metadata.couponCode || null,
+        shippingMethod: (metadata.shippingMethod === 'free' || metadata.shippingMethod === 'fast') ? metadata.shippingMethod : undefined,
         appliedPromotionIds,
       });
 
@@ -182,6 +183,7 @@ export async function POST(request: NextRequest) {
         total: calculatedPricing.total,
         notes: mockOrderData.notes,
         couponCode: mockOrderData.couponCode || null,
+        shippingMethod: mockOrderData.shippingMethod === 'free' || mockOrderData.shippingMethod === 'fast' ? mockOrderData.shippingMethod : undefined,
         appliedPromotionIds: calculatedPricing.appliedPromotions.map((p) => p.id),
       });
 
