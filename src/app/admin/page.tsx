@@ -20,6 +20,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { formatPrice, formatDate } from '@/lib/utils';
 import { getInventoryMetrics } from '@/lib/inventory-service';
 import SalesPerformanceInteractive from '@/components/admin/SalesPerformanceInteractive';
@@ -43,8 +44,8 @@ async function getAdminMetrics() {
 
     // Filter to strictly exclude cancelled and failed orders from revenue metrics
     const validSalesFilter = {
-      status: { not: 'CANCELLED' as const },
-      paymentStatus: { notIn: ['CANCELLED', 'FAILED'] as const },
+      status: { not: 'CANCELLED' as OrderStatus },
+      paymentStatus: { notIn: ['CANCELLED', 'FAILED'] as PaymentStatus[] },
     };
 
     const [
