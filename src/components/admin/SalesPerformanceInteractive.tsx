@@ -7,9 +7,6 @@ import {
   BarChart3, 
   Sparkles, 
   TrendingUp, 
-  ShoppingCart,
-  CheckCircle2,
-  Layers
 } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 
@@ -17,6 +14,14 @@ export interface ChartDataPoint {
   label: string;
   sublabel?: string;
   amount: number;
+  orderCount: number;
+}
+
+export interface PeriodFinancials {
+  productRevenue: number;
+  shippingCollected: number;
+  taxCollected: number;
+  totalCollected: number;
   orderCount: number;
 }
 
@@ -29,6 +34,12 @@ export interface SalesPerformanceProps {
   todayOrdersCount: number;
   weeklyOrdersCount: number;
   monthlyOrdersCount: number;
+  breakdowns: {
+    today: PeriodFinancials;
+    weekly: PeriodFinancials;
+    monthly: PeriodFinancials;
+    gross: PeriodFinancials;
+  };
   chartData: {
     today: ChartDataPoint[];
     weekly: ChartDataPoint[];
@@ -48,6 +59,7 @@ export default function SalesPerformanceInteractive({
   todayOrdersCount,
   weeklyOrdersCount,
   monthlyOrdersCount,
+  breakdowns,
   chartData,
 }: SalesPerformanceProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('weekly');
@@ -58,46 +70,46 @@ export default function SalesPerformanceInteractive({
       case 'today':
         return {
           title: "Today's Sales Velocity",
-          subtitle: 'Hourly performance breakdown over the current 24-hour cycle',
-          total: todaySales,
-          orders: todayOrdersCount,
+          subtitle: `Product Revenue: ${formatPrice(breakdowns.today.productRevenue)} • Shipping: ${formatPrice(breakdowns.today.shippingCollected)} • Tax: ${formatPrice(breakdowns.today.taxCollected)}`,
+          total: breakdowns.today.totalCollected,
+          orders: breakdowns.today.orderCount,
+          financials: breakdowns.today,
           data: chartData.today,
           icon: Calendar,
           color: 'text-emerald-600',
-          bgActive: 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20',
         };
       case 'weekly':
         return {
           title: 'Weekly Sales Breakdown (Last 7 Days)',
-          subtitle: 'Day-by-day revenue from completed customer purchases',
-          total: weeklySales,
-          orders: weeklyOrdersCount,
+          subtitle: `Product Revenue: ${formatPrice(breakdowns.weekly.productRevenue)} • Shipping: ${formatPrice(breakdowns.weekly.shippingCollected)} • Tax: ${formatPrice(breakdowns.weekly.taxCollected)}`,
+          total: breakdowns.weekly.totalCollected,
+          orders: breakdowns.weekly.orderCount,
+          financials: breakdowns.weekly,
           data: chartData.weekly,
           icon: DollarSign,
           color: 'text-blue-600',
-          bgActive: 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20',
         };
       case 'monthly':
         return {
           title: 'Monthly Sales Volume (Rolling 30 Days)',
-          subtitle: 'Daily revenue distribution across the last 30 days',
-          total: monthlySales,
-          orders: monthlyOrdersCount,
+          subtitle: `Product Revenue: ${formatPrice(breakdowns.monthly.productRevenue)} • Shipping: ${formatPrice(breakdowns.monthly.shippingCollected)} • Tax: ${formatPrice(breakdowns.monthly.taxCollected)}`,
+          total: breakdowns.monthly.totalCollected,
+          orders: breakdowns.monthly.orderCount,
+          financials: breakdowns.monthly,
           data: chartData.monthly,
           icon: BarChart3,
           color: 'text-indigo-600',
-          bgActive: 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20',
         };
       case 'gross':
         return {
           title: 'All-Time Gross Sales History',
-          subtitle: 'Cumulative historical sales excluding cancelled or refunded orders',
-          total: grossSales,
-          orders: validOrdersCount,
+          subtitle: `Product Revenue: ${formatPrice(breakdowns.gross.productRevenue)} • Shipping: ${formatPrice(breakdowns.gross.shippingCollected)} • Tax: ${formatPrice(breakdowns.gross.taxCollected)}`,
+          total: breakdowns.gross.totalCollected,
+          orders: breakdowns.gross.orderCount,
+          financials: breakdowns.gross,
           data: chartData.allTime,
           icon: Sparkles,
           color: 'text-amber-600',
-          bgActive: 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20',
         };
     }
   };
@@ -126,6 +138,7 @@ export default function SalesPerformanceInteractive({
         <button
           type="button"
           onClick={() => setSelectedPeriod('today')}
+          title={`Product: ${formatPrice(breakdowns.today.productRevenue)} | Shipping: ${formatPrice(breakdowns.today.shippingCollected)} | Tax: ${formatPrice(breakdowns.today.taxCollected)}`}
           className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden bg-white ${
             selectedPeriod === 'today'
               ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/10 shadow-sm'
@@ -159,6 +172,7 @@ export default function SalesPerformanceInteractive({
         <button
           type="button"
           onClick={() => setSelectedPeriod('weekly')}
+          title={`Product: ${formatPrice(breakdowns.weekly.productRevenue)} | Shipping: ${formatPrice(breakdowns.weekly.shippingCollected)} | Tax: ${formatPrice(breakdowns.weekly.taxCollected)}`}
           className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden bg-white ${
             selectedPeriod === 'weekly'
               ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/10 shadow-sm'
@@ -189,6 +203,7 @@ export default function SalesPerformanceInteractive({
         <button
           type="button"
           onClick={() => setSelectedPeriod('monthly')}
+          title={`Product: ${formatPrice(breakdowns.monthly.productRevenue)} | Shipping: ${formatPrice(breakdowns.monthly.shippingCollected)} | Tax: ${formatPrice(breakdowns.monthly.taxCollected)}`}
           className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden bg-white ${
             selectedPeriod === 'monthly'
               ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/10 shadow-sm'
@@ -219,6 +234,7 @@ export default function SalesPerformanceInteractive({
         <button
           type="button"
           onClick={() => setSelectedPeriod('gross')}
+          title={`Product: ${formatPrice(breakdowns.gross.productRevenue)} | Shipping: ${formatPrice(breakdowns.gross.shippingCollected)} | Tax: ${formatPrice(breakdowns.gross.taxCollected)}`}
           className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden bg-white ${
             selectedPeriod === 'gross'
               ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/10 shadow-sm'
@@ -235,7 +251,7 @@ export default function SalesPerformanceInteractive({
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">{formatPrice(grossSales)}</p>
           <div className="flex items-center justify-between text-[11px] mt-1">
-            <span className="text-amber-700 font-semibold">Net paid revenue</span>
+            <span className="text-amber-700 font-semibold">Total collected</span>
             <span className="text-slate-400 font-medium">
               {validOrdersCount} completed
             </span>
@@ -263,8 +279,8 @@ export default function SalesPerformanceInteractive({
 
           {/* Quick Metrics for selected period */}
           <div className="flex items-center space-x-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200/80">
-            <div>
-              <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Volume</span>
+            <div title={`Total Collected: Product Revenue (${formatPrice(currentDetails.financials.productRevenue)}) + Shipping (${formatPrice(currentDetails.financials.shippingCollected)}) + Tax (${formatPrice(currentDetails.financials.taxCollected)})`}>
+              <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Collected</span>
               <span className="text-sm font-black text-slate-900">{formatPrice(currentDetails.total)}</span>
             </div>
             <div className="h-6 w-[1px] bg-slate-200" />
@@ -273,8 +289,8 @@ export default function SalesPerformanceInteractive({
               <span className="text-sm font-black text-slate-900">{currentDetails.orders}</span>
             </div>
             <div className="h-6 w-[1px] bg-slate-200" />
-            <div>
-              <span className="text-[10px] font-bold uppercase text-slate-400 block">Avg Value</span>
+            <div title="Average total collected per order, including product, shipping and tax.">
+              <span className="text-[10px] font-bold uppercase text-slate-400 block">Avg Order Value</span>
               <span className="text-sm font-black text-slate-900">{formatPrice(avgOrderValue)}</span>
             </div>
           </div>

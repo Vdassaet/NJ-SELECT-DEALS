@@ -71,6 +71,10 @@ async function getAdminMetrics() {
         where: validSalesFilter,
         select: {
           id: true,
+          subtotal: true,
+          discount: true,
+          shippingCost: true,
+          tax: true,
           total: true,
           amountRefunded: true,
           status: true,
@@ -110,16 +114,46 @@ async function getAdminMetrics() {
       return Math.max(0, ord.total - (ord.amountRefunded || 0));
     };
 
+    // Calculate separated financial components: Product Revenue, Shipping, Tax, Total
+    const calculateBreakdown = (orders: typeof validOrders) => {
+      let productRevenue = 0;
+      let shippingCollected = 0;
+      let taxCollected = 0;
+      let totalCollected = 0;
+
+      orders.forEach((ord) => {
+        if (ord.paymentStatus === 'REFUNDED') return;
+        const refunded = ord.amountRefunded || 0;
+        productRevenue += Math.max(0, ord.subtotal);
+        shippingCollected += ord.shippingCost || 0;
+        taxCollected += ord.tax || 0;
+        totalCollected += Math.max(0, ord.total - refunded);
+      });
+
+      return {
+        productRevenue: Math.round(productRevenue * 100) / 100,
+        shippingCollected: Math.round(shippingCollected * 100) / 100,
+        taxCollected: Math.round(taxCollected * 100) / 100,
+        totalCollected: Math.round(totalCollected * 100) / 100,
+        orderCount: orders.length,
+      };
+    };
+
     // Filter valid orders by timeframe
     const todayOrders = validOrders.filter((o) => o.createdAt >= startOfToday);
     const weeklyOrders = validOrders.filter((o) => o.createdAt >= startOf7DaysAgo);
     const monthlyOrders = validOrders.filter((o) => o.createdAt >= startOf30DaysAgo);
 
+    const todayBreakdown = calculateBreakdown(todayOrders);
+    const weeklyBreakdown = calculateBreakdown(weeklyOrders);
+    const monthlyBreakdown = calculateBreakdown(monthlyOrders);
+    const grossBreakdown = calculateBreakdown(validOrders);
+
     // Precise sales sums excluding cancelled orders
-    const todaySales = Math.round(todayOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
-    const weeklySales = Math.round(weeklyOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
-    const monthlySales = Math.round(monthlyOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
-    const totalRevenue = Math.round(validOrders.reduce((sum, ord) => sum + getNetOrderAmount(ord), 0) * 100) / 100;
+    const todaySales = todayBreakdown.totalCollected;
+    const weeklySales = weeklyBreakdown.totalCollected;
+    const monthlySales = monthlyBreakdown.totalCollected;
+    const totalRevenue = grossBreakdown.totalCollected;
 
     // Order status pipeline breakdown
     let pendingOrders = 0;
@@ -288,6 +322,12 @@ async function getAdminMetrics() {
         monthly: monthlyBuckets,
         allTime: allTimeBuckets,
       },
+      breakdowns: {
+        today: todayBreakdown,
+        weekly: weeklyBreakdown,
+        monthly: monthlyBreakdown,
+        gross: grossBreakdown,
+      },
     };
   } catch (error) {
     console.error('Error loading admin dashboard metrics:', error);
@@ -321,6 +361,12 @@ async function getAdminMetrics() {
         weekly: [],
         monthly: [],
         allTime: [],
+      },
+      breakdowns: {
+        today: { productRevenue: 0, shippingCollected: 0, taxCollected: 0, totalCollected: 0, orderCount: 0 },
+        weekly: { productRevenue: 0, shippingCollected: 0, taxCollected: 0, totalCollected: 0, orderCount: 0 },
+        monthly: { productRevenue: 0, shippingCollected: 0, taxCollected: 0, totalCollected: 0, orderCount: 0 },
+        gross: { productRevenue: 0, shippingCollected: 0, taxCollected: 0, totalCollected: 0, orderCount: 0 },
       },
     };
   }
@@ -379,6 +425,7 @@ export default async function AdminDashboardPage() {
         todayOrdersCount={metrics.todayOrdersCount}
         weeklyOrdersCount={metrics.weeklyOrdersCount}
         monthlyOrdersCount={metrics.monthlyOrdersCount}
+        breakdowns={metrics.breakdowns}
         chartData={metrics.chartData}
       />
 
