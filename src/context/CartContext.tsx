@@ -79,10 +79,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Force 'fast' shipping if subtotal is below free shipping threshold
   useEffect(() => {
-    if (isLoaded && subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && shippingMethodState === 'free') {
+    if (isLoaded && subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && shippingMethod === 'free') {
       setShippingMethod('fast');
     }
-  }, [subtotal, shippingMethodState, isLoaded]);
+  }, [subtotal, shippingMethod, isLoaded]);
 
   const addItem = (newItem: Omit<CartItem, 'quantity'>, quantity: number = 1): { success: boolean; message?: string } => {
     if (newItem.maxInventory <= 0) {
