@@ -15,16 +15,20 @@ interface CartContextType {
   shippingEstimate: number;
   orderTotal: number;
   freeShippingThreshold: number;
+  shippingMethod: 'free' | 'fast';
+  setShippingMethod: (method: 'free' | 'fast') => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'njd_cart_v1';
+const SHIPPING_METHOD_STORAGE_KEY = 'njd_shipping_method';
 const FREE_SHIPPING_THRESHOLD = 50;
 const STANDARD_SHIPPING_RATE = 4.99;
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [shippingMethod, setShippingMethodState] = useState<'free' | 'fast'>('free');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load cart from localStorage on mount
@@ -34,12 +38,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (saved) {
         setItems(JSON.parse(saved));
       }
+      const savedMethod = localStorage.getItem(SHIPPING_METHOD_STORAGE_KEY);
+      if (savedMethod === 'free' || savedMethod === 'fast') {
+        setShippingMethodState(savedMethod);
+      }
     } catch (e) {
       console.error('Failed to load cart from storage', e);
     } finally {
       setIsLoaded(true);
     }
   }, []);
+
+  const setShippingMethod = (method: 'free' | 'fast') => {
+    setShippingMethodState(method);
+    try {
+      localStorage.setItem(SHIPPING_METHOD_STORAGE_KEY, method);
+    } catch (e) {
+      console.error('Failed to save shipping method', e);
+    }
+  };
 
   // Save cart to localStorage when updated
   useEffect(() => {
@@ -51,6 +68,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [items, isLoaded]);
+
+  // Calculations
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const subtotal = items.reduce((sum, item) => {
+    const effectivePrice = item.salePrice !== null && item.salePrice !== undefined && item.salePrice < item.price ? item.salePrice : item.price;
+    return sum + effectivePrice * item.quantity;
+  }, 0);
+
+  // Force 'fast' shipping if subtotal is below free shipping threshold
+  useEffect(() => {
+    if (isLoaded && subtotal > 0 && subtotal < FREE_SHIPPING_THRESHOLD && shippingMethodState === 'free') {
+      setShippingMethod('fast');
+    }
+  }, [subtotal, shippingMethodState, isLoaded]);
 
   const addItem = (newItem: Omit<CartItem, 'quantity'>, quantity: number = 1): { success: boolean; message?: string } => {
     if (newItem.maxInventory <= 0) {
@@ -133,14 +165,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems([]);
   };
 
-  // Calculations
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-
-  const subtotal = items.reduce((sum, item) => {
-    const effectivePrice = item.salePrice !== null && item.salePrice !== undefined && item.salePrice < item.price ? item.salePrice : item.price;
-    return sum + effectivePrice * item.quantity;
-  }, 0);
-
   const discountTotal = items.reduce((sum, item) => {
     if (item.salePrice !== null && item.salePrice !== undefined && item.salePrice < item.price) {
       return sum + (item.price - item.salePrice) * item.quantity;
@@ -148,7 +172,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return sum;
   }, 0);
 
-  const shippingEstimate = subtotal === 0 ? 0 : subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_RATE;
+  const shippingEstimate = subtotal === 0 ? 0 : (shippingMethod === 'fast' ? STANDARD_SHIPPING_RATE : 0);
   const orderTotal = subtotal + shippingEstimate;
 
   return (
@@ -165,6 +189,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         shippingEstimate,
         orderTotal,
         freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
+        shippingMethod,
+        setShippingMethod,
       }}
     >
       {children}

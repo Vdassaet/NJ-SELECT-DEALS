@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
             currency: 'usd',
             product_data: {
               name: shippingMethod === 'free' ? 'Free Standard Shipping' : 'Fast Shipping',
-              description: shippingMethod === 'free' ? 'Estimated delivery 6-8 business days' : 'Estimated delivery 2-4 business days',
+              description: shippingMethod === 'free' ? 'Estimated delivery 2-8 business days' : 'Estimated delivery 2-8 business days',
             },
             unit_amount: Math.round(shippingCost * 100),
           },

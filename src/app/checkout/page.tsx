@@ -19,7 +19,7 @@ import { UserSession, AddressItem } from '@/lib/types';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, discountTotal, shippingEstimate } = useCart();
+  const { items, subtotal, discountTotal, shippingEstimate, shippingMethod: cartShippingMethod, setShippingMethod: setCartShippingMethod, freeShippingThreshold } = useCart();
 
   const [user, setUser] = useState<UserSession | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<AddressItem[]>([]);
@@ -39,7 +39,18 @@ export default function CheckoutPage() {
   const [country, setCountry] = useState('US');
   const [notes, setNotes] = useState('');
   const [saveAddress, setSaveAddress] = useState(false);
-  const [shippingMethod, setShippingMethod] = useState<'free' | 'fast'>('fast');
+  const [shippingMethod, setShippingMethod] = useState<'free' | 'fast'>(cartShippingMethod || 'free');
+
+  useEffect(() => {
+    if (cartShippingMethod) {
+      setShippingMethod(cartShippingMethod);
+    }
+  }, [cartShippingMethod]);
+
+  const handleSelectShippingMethod = (method: 'free' | 'fast') => {
+    setShippingMethod(method);
+    setCartShippingMethod(method);
+  };
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -480,32 +491,73 @@ export default function CheckoutPage() {
               3. Shipping Method
             </h2>
             <div className="space-y-3">
-              <label className={"flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all " + (shippingMethod === 'free' ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300')}>
+                            <label
+                onClick={(e) => {
+                  if (subtotal < freeShippingThreshold) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleSelectShippingMethod('free');
+                }}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                  subtotal < freeShippingThreshold
+                    ? 'opacity-60 cursor-not-allowed border-slate-200 bg-slate-50'
+                    : shippingMethod === 'free'
+                    ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-500/20 cursor-pointer'
+                    : 'border-slate-200 hover:border-slate-300 cursor-pointer'
+                }`}
+              >
                 <div className="flex items-center space-x-3">
-                  <div className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-300">
-                    {shippingMethod === 'free' && <div className="w-3 h-3 rounded-full bg-brand-600" />}
+                  <div className={`flex items-center justify-center w-5 h-5 rounded-full border flex-shrink-0 ${subtotal < freeShippingThreshold ? 'border-slate-200 bg-slate-100' : 'border-slate-300'}`}>
+                    {shippingMethod === 'free' && subtotal >= freeShippingThreshold && <div className="w-3 h-3 rounded-full bg-brand-600" />}
                   </div>
                   <div>
                     <span className="block text-sm font-bold text-slate-900">Free Shipping</span>
-                    <span className="block text-xs text-slate-500">Estimated delivery: 6-8 business days</span>
+                    {subtotal < freeShippingThreshold ? (
+                      <span className="block text-xs text-brand-600 font-medium">Spend $50 or more to unlock FREE Fast Shipping (2-8 days).</span>
+                    ) : (
+                      <span className="block text-xs text-slate-500">Estimated delivery: 2-8 business days</span>
+                    )}
                   </div>
                 </div>
                 <span className="text-sm font-black text-emerald-600">FREE</span>
-                <input type="radio" name="shipping" value="free" checked={shippingMethod === 'free'} onChange={() => setShippingMethod('free')} className="hidden" />
+                <input
+                  type="radio"
+                  name="shipping"
+                  value="free"
+                  checked={shippingMethod === 'free' && subtotal >= freeShippingThreshold}
+                  onChange={() => subtotal >= freeShippingThreshold && handleSelectShippingMethod('free')}
+                  disabled={subtotal < freeShippingThreshold}
+                  className="hidden"
+                />
               </label>
 
-              <label className={"flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all " + (shippingMethod === 'fast' ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-500/20' : 'border-slate-200 hover:border-slate-300')}>
+                            <label
+                onClick={() => handleSelectShippingMethod('fast')}
+                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
+                  shippingMethod === 'fast' || (subtotal < freeShippingThreshold)
+                    ? 'border-brand-600 bg-brand-50/50 ring-2 ring-brand-500/20'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-300">
-                    {shippingMethod === 'fast' && <div className="w-3 h-3 rounded-full bg-brand-600" />}
+                    {(shippingMethod === 'fast' || subtotal < freeShippingThreshold) && <div className="w-3 h-3 rounded-full bg-brand-600" />}
                   </div>
                   <div>
                     <span className="block text-sm font-bold text-slate-900">Fast Shipping</span>
-                    <span className="block text-xs text-slate-500">Estimated delivery: 2-4 business days</span>
+                    <span className="block text-xs text-slate-500">Estimated delivery: 2-8 business days</span>
                   </div>
                 </div>
                 <span className="text-sm font-black text-slate-900">$4.99</span>
-                <input type="radio" name="shipping" value="fast" checked={shippingMethod === 'fast'} onChange={() => setShippingMethod('fast')} className="hidden" />
+                <input
+                  type="radio"
+                  name="shipping"
+                  value="fast"
+                  checked={shippingMethod === 'fast' || subtotal < freeShippingThreshold}
+                  onChange={() => handleSelectShippingMethod('fast')}
+                  className="hidden"
+                />
               </label>
             </div>
           </div>
