@@ -13,23 +13,38 @@ export function formatPrice(price: number, currency: string = "USD"): string {
   }).format(price);
 }
 
+export const STORE_TIMEZONE = "America/New_York";
+
 export function formatDate(date: string | Date): string {
   const d = new Date(date);
   return d.toLocaleDateString("en-US", {
+    timeZone: STORE_TIMEZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
+export function formatTime(date: string | Date): string {
+  const d = new Date(date);
+  return d.toLocaleTimeString("en-US", {
+    timeZone: STORE_TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export function formatDateTime(date: string | Date): string {
   const d = new Date(date);
   return d.toLocaleString("en-US", {
+    timeZone: STORE_TIMEZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
-    hour: "2-digit",
+    hour: "numeric",
     minute: "2-digit",
+    hour12: true,
   });
 }
 
@@ -52,9 +67,7 @@ import crypto from 'crypto';
 
 export function generateOrderNumber(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+  const ymd = now.toLocaleDateString('en-CA', { timeZone: STORE_TIMEZONE }).replace(/-/g, '');
   const randomSuffix = crypto.randomBytes(4).toString('hex').toUpperCase();
-  return `ORD-${year}${month}${day}-${randomSuffix}`;
+  return `ORD-${ymd}-${randomSuffix}`;
 }

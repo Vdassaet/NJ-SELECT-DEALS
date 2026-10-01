@@ -19,7 +19,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { OrderDetail } from '@/lib/types';
-import { formatPrice, formatDate } from '@/lib/utils';
+import { formatPrice, formatDate, formatTime } from '@/lib/utils';
 import { getTrackingUrl } from '@/lib/shipping-engine';
 
 export default function AdminOrdersPage() {
@@ -229,8 +229,9 @@ export default function AdminOrdersPage() {
                         <p className="text-[11px] text-slate-400">{ord.guestEmail || ord.user?.email || '—'}</p>
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-500">
-                        {formatDate(ord.createdAt)}
+                      <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                        <span className="font-semibold text-slate-900 block">{formatDate(ord.createdAt)}</span>
+                        <span className="text-[11px] text-slate-400 block">{formatTime(ord.createdAt)}</span>
                       </td>
 
                       <td className="py-3.5 px-4 font-medium">

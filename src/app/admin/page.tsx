@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
-import { formatPrice, formatDate } from '@/lib/utils';
+import { formatPrice, formatDate, formatDateTime, STORE_TIMEZONE } from '@/lib/utils';
 import { getInventoryMetrics } from '@/lib/inventory-service';
 import SalesPerformanceInteractive from '@/components/admin/SalesPerformanceInteractive';
 
@@ -139,10 +139,15 @@ async function getAdminMetrics() {
       };
     };
 
-    // Filter valid orders by timeframe
-    const todayOrders = validOrders.filter((o) => o.createdAt >= startOfToday);
-    const weeklyOrders = validOrders.filter((o) => o.createdAt >= startOf7DaysAgo);
-    const monthlyOrders = validOrders.filter((o) => o.createdAt >= startOf30DaysAgo);
+    // Filter valid orders by timeframe according to Store Timezone (America/New_York)
+    const todayYMD = now.toLocaleDateString('en-CA', { timeZone: STORE_TIMEZONE });
+    const todayOrders = validOrders.filter((o) => {
+      const orderYMD = o.createdAt.toLocaleDateString('en-CA', { timeZone: STORE_TIMEZONE });
+      return orderYMD === todayYMD || (now.getTime() - o.createdAt.getTime() <= 24 * 60 * 60 * 1000);
+    });
+
+    const weeklyOrders = validOrders.filter((o) => (now.getTime() - o.createdAt.getTime()) <= 7 * 24 * 60 * 60 * 1000);
+    const monthlyOrders = validOrders.filter((o) => (now.getTime() - o.createdAt.getTime()) <= 30 * 24 * 60 * 60 * 1000);
 
     const todayBreakdown = calculateBreakdown(todayOrders);
     const weeklyBreakdown = calculateBreakdown(weeklyOrders);
@@ -182,7 +187,7 @@ async function getAdminMetrics() {
       }
     });
 
-    // Chart Buckets: Today (8 intervals of 3 hours)
+    // Chart Buckets: Today (8 intervals of 3 hours in America/New_York)
     const todayBuckets = [
       { label: '12am', startH: 0, endH: 3 },
       { label: '3am', startH: 3, endH: 6 },
@@ -194,7 +199,12 @@ async function getAdminMetrics() {
       { label: '9pm', startH: 21, endH: 24 },
     ].map((b) => {
       const matching = todayOrders.filter((o) => {
-        const h = o.createdAt.getHours();
+        const hourStr = o.createdAt.toLocaleTimeString('en-US', {
+          timeZone: STORE_TIMEZONE,
+          hour: 'numeric',
+          hour12: false,
+        });
+        const h = parseInt(hourStr, 10);
         return h >= b.startH && h < b.endH;
       });
       return {
@@ -204,18 +214,18 @@ async function getAdminMetrics() {
       };
     });
 
-    // Chart Buckets: Weekly (last 7 calendar days)
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Chart Buckets: Weekly (last 7 calendar days in America/New_York)
     const weeklyBuckets = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-      const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      const targetDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const targetYMD = targetDate.toLocaleDateString('en-CA', { timeZone: STORE_TIMEZONE });
 
-      const matching = validOrders.filter((o) => o.createdAt >= dayStart && o.createdAt <= dayEnd);
-      const dayName = i === 0 ? 'Today' : daysOfWeek[d.getDay()];
-      const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+      const matching = validOrders.filter((o) => {
+        return o.createdAt.toLocaleDateString('en-CA', { timeZone: STORE_TIMEZONE }) === targetYMD;
+      });
+
+      const dayName = i === 0 ? 'Today' : targetDate.toLocaleDateString('en-US', { timeZone: STORE_TIMEZONE, weekday: 'short' });
+      const dateStr = targetDate.toLocaleDateString('en-US', { timeZone: STORE_TIMEZONE, month: 'numeric', day: 'numeric' });
 
       weeklyBuckets.push({
         label: dayName,
@@ -573,7 +583,7 @@ export default async function AdminDashboardPage() {
                       <span className="text-[10px] text-slate-400 font-medium">({ord.items?.length || 0} items)</span>
                     </div>
                     <p className="text-slate-500 text-[11px] mt-0.5">
-                      {ord.shippingName} • {formatDate(ord.createdAt)}
+                      {ord.shippingName} • <span className="font-semibold text-slate-700">{formatDateTime(ord.createdAt)}</span>
                     </p>
                   </div>
                   <div className="text-right">
