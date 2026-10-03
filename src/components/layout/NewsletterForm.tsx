@@ -19,10 +19,25 @@ export default function NewsletterForm() {
     }
 
     setIsSubmitting(true);
-    // Simulate brief network submission for client UX feedback
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsSubmitting(false);
-    setIsSubscribed(true);
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to subscribe');
+      }
+
+      setIsSubscribed(true);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubscribed) {

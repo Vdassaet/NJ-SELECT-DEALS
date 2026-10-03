@@ -633,3 +633,60 @@ export async function sendPasswordResetEmail(params: {
   });
 }
 
+/**
+ * Newsletter Welcome Email
+ */
+export async function sendNewsletterWelcomeEmail(params: { to: string }) {
+  const config = await getStoreEmailConfig();
+  const { to } = params;
+
+  const html = \
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Welcome to \</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; padding: 24px 12px; margin: 0; color: #334155;">
+      <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        
+        <div style="background-color: #0f172a; padding: 28px 24px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">\</h1>
+          <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 13px;">Newsletter Subscription</p>
+        </div>
+
+        <div style="padding: 32px 28px;">
+          <h2 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Welcome to the Club!</h2>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 20px 0;">
+            Hi there,<br/>
+            Thanks for subscribing to the <strong>\</strong> newsletter. We are thrilled to have you!
+          </p>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">
+            You'll be the first to know about our latest personal care shipments, limited chocolates, and exclusive promotions.
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="\" style="background-color: #059669; color: #ffffff; font-weight: 700; font-size: 14px; padding: 14px 28px; text-decoration: none; border-radius: 12px; display: inline-block; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);">
+              Shop Now
+            </a>
+          </div>
+        </div>
+
+        <div style="background-color: #f8fafc; padding: 20px 24px; text-align: center; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8;">
+          <p style="margin: 0;">\ &bull; \</p>
+          <p style="margin: 4px 0 0 0;">You are receiving this email because you opted in via our website.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  \;
+
+  return sendEmailWithLog({
+    to,
+    subject: \Welcome to \!\,
+    html,
+    template: 'NEWSLETTER_WELCOME',
+    metadata: { source: 'newsletter_form' },
+  });
+}
