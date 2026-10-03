@@ -26,7 +26,7 @@ const faqs = [
   },
   {
     q: 'What is your return and refund policy?',
-    a: 'Due to strict consumer safety, hygiene, and food sanitation standards, all sales of liquids, cosmetics, personal care, hair care, beauty, confectionery, chocolates, and consumable goods are final once shipped. We do not accept returns or issue refunds for change of mind, ordering errors, or subjective dissatisfaction. If an item arrives materially damaged in transit or defective, notify njselectdeals@gmail.com within 48 hours of delivery with photographic proof.',
+    a: 'Due to the nature of certain products we sell, including personal care products, beauty products, liquids, cosmetics, health and hygiene products, and food/candy items, we generally do not accept returns for customer preference, change of mind, or ordering the wrong item. If you receive an item that is damaged, defective, incorrect, or materially different from what you ordered, please contact us promptly at njselectdeals@gmail.com with clear photos of the product and packaging.',
   },
   {
     q: 'What should I do if my order arrives damaged, leaking, or broken?',

@@ -575,10 +575,10 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                 <div className="space-y-2">
                   <p className="font-semibold text-slate-900">Health, Hygiene &amp; Safety Standard:</p>
                   <p className="text-slate-500">
-                    To maintain strict consumer safety, hygiene, and product integrity, personal care, beauty, cosmetics, liquids, hair care, and confectionery items are <strong>final sale and non-returnable</strong> once dispatched. We do not accept returns for change of mind or ordering errors.
+                    For health, safety, and hygiene reasons, we generally do not accept returns for change of mind or ordering errors on personal care, beauty, liquids, and confectionery items.
                   </p>
                   <p className="text-slate-500">
-                    <strong>Transit Damage or Defect?</strong> If your item arrived materially damaged, leaking, or defective, contact our customer support team within <strong>48 hours of delivery</strong> at <a href="mailto:njselectdeals@gmail.com" className="text-brand-600 font-semibold hover:underline">njselectdeals@gmail.com</a> with photographs of the product, exterior shipping box, and shipping label. Read our complete <Link href="/returns" className="text-brand-600 font-semibold hover:underline">Return &amp; Refund Policy</Link>.
+                    <strong>Transit Damage or Defect?</strong> If your item arrived damaged, defective, or incorrect, please contact our customer support team promptly at <a href="mailto:njselectdeals@gmail.com" className="text-brand-600 font-semibold hover:underline">njselectdeals@gmail.com</a> with photographs. Refunds or replacements are not automatic and are subject to review. Read our complete <Link href="/returns" className="text-brand-600 font-semibold hover:underline">Return &amp; Refund Policy</Link>.
                   </p>
                 </div>
               )}
