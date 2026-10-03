@@ -209,7 +209,7 @@ async function runPenetrationVerificationSuite() {
         stripeSessionId: 'cs_test_secret_alice_123',
         shippingName: 'Alice Security',
         shippingStreet: '123 Secret Street',
-        shippingCity: 'Paramus',
+        shippingCity: 'Passaic',
         shippingState: 'NJ',
         shippingPostalCode: '07652',
         shippingCountry: 'US',

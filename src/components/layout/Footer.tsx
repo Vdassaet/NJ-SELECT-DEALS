@@ -83,11 +83,7 @@ export function Footer() {
             <div className="space-y-2 text-xs text-slate-400 pt-2">
               <div className="flex items-center space-x-2">
                 <MapPin className="w-4 h-4 text-brand-400 flex-shrink-0" />
-                <span>Passaic, New Jersey, USA</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Phone className="w-4 h-4 text-brand-400 flex-shrink-0" />
-                <span></span>
+                <span>Passaic, New Jersey</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-brand-400 flex-shrink-0" />

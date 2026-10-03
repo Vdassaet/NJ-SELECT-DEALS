@@ -464,7 +464,6 @@ export function Header() {
             <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs text-slate-500">
               <p className="font-semibold text-slate-700">Need Assistance?</p>
               <p>Email: njselectdeals@gmail.com</p>
-              <p>Toll-Free: </p>
             </div>
           </div>
         </div>

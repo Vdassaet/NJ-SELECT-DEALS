@@ -55,7 +55,7 @@ export default function ContactPage() {
           <h3 className="font-black text-slate-900 text-sm">Warehouse Location</h3>
           <p className="text-xs text-slate-500">Passaic Distribution Center</p>
           <span className="text-xs text-slate-700 font-semibold block">
-            Passaic, New Jersey, USA
+            Passaic, New Jersey
           </span>
         </div>
       </div>

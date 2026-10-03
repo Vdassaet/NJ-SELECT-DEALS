@@ -9,9 +9,9 @@ async function main() {
   // 1. Seed Store Settings
   const defaultSettings = [
     { key: 'store_name', value: process.env.NEXT_PUBLIC_STORE_NAME || 'NJ Select Deals', description: 'Primary store name' },
-    { key: 'store_email', value: process.env.NEXT_PUBLIC_STORE_EMAIL || 'support@njselectdeals.com', description: 'Store customer support email' },
-    { key: 'store_phone', value: process.env.NEXT_PUBLIC_STORE_PHONE || '(800) 555-DEAL', description: 'Store contact telephone' },
-    { key: 'store_address', value: '100 Route 17 North, Paramus, NJ 07652', description: 'Store physical or warehouse address' },
+    { key: 'store_email', value: process.env.NEXT_PUBLIC_STORE_EMAIL || 'njselectdeals@gmail.com', description: 'Store customer support email' },
+    { key: 'store_phone', value: process.env.NEXT_PUBLIC_STORE_PHONE || '', description: 'Store contact telephone' },
+    { key: 'store_address', value: 'Passaic, New Jersey', description: 'Store physical or warehouse address' },
     { key: 'currency', value: 'USD', description: 'Store currency code' },
     { key: 'currency_symbol', value: '$', description: 'Store currency symbol' },
     { key: 'free_shipping_threshold', value: process.env.NEXT_PUBLIC_FREE_SHIPPING_THRESHOLD || '50', description: 'Minimum order amount for free shipping' },

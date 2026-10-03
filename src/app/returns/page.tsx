@@ -299,7 +299,7 @@ export default function ReturnsPage() {
               </div>
             </div>
             <p className="text-[11px] text-slate-400 pt-1">
-              NJ Select Deals LLC • Passaic, New Jersey, USA
+              NJ Select Deals LLC • Passaic, New Jersey
             </p>
           </div>
         </section>

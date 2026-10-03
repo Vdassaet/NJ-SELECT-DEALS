@@ -69,7 +69,7 @@ async function runInventoryAudit() {
       shippingAddress: {
         fullName: 'Shopper Alpha',
         street: '100 Main St',
-        city: 'Paramus',
+        city: 'Passaic',
         state: 'NJ',
         postalCode: '07652',
         country: 'US',
@@ -88,7 +88,7 @@ async function runInventoryAudit() {
       shippingAddress: {
         fullName: 'Shopper Beta',
         street: '200 Market St',
-        city: 'Paramus',
+        city: 'Passaic',
         state: 'NJ',
         postalCode: '07652',
         country: 'US',
@@ -201,7 +201,7 @@ async function runInventoryAudit() {
       shippingAddress: {
         fullName: 'Shopper Refund',
         street: '300 State St',
-        city: 'Paramus',
+        city: 'Passaic',
         state: 'NJ',
         postalCode: '07652',
         country: 'US',
@@ -309,7 +309,7 @@ async function runInventoryAudit() {
         shippingAddress: {
           fullName: 'Blocked User',
           street: '1 Test Way',
-          city: 'Paramus',
+          city: 'Passaic',
           state: 'NJ',
           postalCode: '07652',
           country: 'US',

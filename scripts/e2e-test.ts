@@ -81,7 +81,7 @@ async function runTests() {
         body: JSON.stringify({
           items: [{ id: product.id, quantity: 1 }],
           shippingAddress: {
-            firstName: 'Test', lastName: 'Customer', street: '123 Test St', city: 'Paramus', state: 'NJ', postalCode: '07652', country: 'US'
+            firstName: 'Test', lastName: 'Customer', street: '123 Test St', city: 'Passaic', state: 'NJ', postalCode: '07652', country: 'US'
           },
           email: testEmail
         })

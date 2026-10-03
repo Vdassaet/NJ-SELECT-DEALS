@@ -47,7 +47,7 @@ export async function getStoreEmailConfig(): Promise<StoreEmailConfig> {
         '',
       storeAddress:
         settingsMap['store_address'] ||
-        'Passaic, New Jersey, USA',
+        'Passaic, New Jersey',
       orderNotificationEmail:
         settingsMap['order_notification_email'] ||
         process.env.ADMIN_EMAIL ||
@@ -61,7 +61,7 @@ export async function getStoreEmailConfig(): Promise<StoreEmailConfig> {
       storeName: process.env.NEXT_PUBLIC_STORE_NAME || 'NJ Select Deals',
       storeEmail: process.env.NEXT_PUBLIC_STORE_EMAIL || 'njselectdeals@gmail.com',
       storePhone: process.env.NEXT_PUBLIC_STORE_PHONE || '',
-      storeAddress: 'Passaic, New Jersey, USA',
+      storeAddress: 'Passaic, New Jersey',
       orderNotificationEmail: process.env.ADMIN_EMAIL || 'admin@njselectdeals.com',
       baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'https://www.njselectdeals.com',
     };

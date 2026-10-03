@@ -73,7 +73,7 @@ export default function AboutPage() {
             Have a question about an order or product ingredients? Our dedicated customer care team is available 7 days a week:
           </p>
           <ul className="space-y-2 text-xs text-slate-600">
-            <li><strong>Fulfillment &amp; Offices:</strong> Passaic, New Jersey, USA</li>
+            <li><strong>Fulfillment &amp; Offices:</strong> Passaic, New Jersey</li>
             <li><strong>Support Email:</strong> njselectdeals@gmail.com</li>
             <li><strong>Toll-Free Phone:</strong> </li>
           </ul>

@@ -137,7 +137,7 @@ async function runEmailSystemAudit() {
         fullName: testCustomerName,
         street: '742 Evergreen Terrace',
         apartment: 'Suite 4B',
-        city: 'Paramus',
+        city: 'Passaic',
         state: 'NJ',
         postalCode: '07652',
         country: 'US',
@@ -236,7 +236,7 @@ async function runEmailSystemAudit() {
       shippingAddress: {
         fullName: testCustomerName,
         street: '742 Evergreen Terrace',
-        city: 'Paramus',
+        city: 'Passaic',
         state: 'NJ',
         postalCode: '07652',
         country: 'US',
@@ -259,7 +259,7 @@ async function runEmailSystemAudit() {
       shippingAddress: {
         fullName: testCustomerName,
         street: '742 Evergreen Terrace',
-        city: 'Paramus',
+        city: 'Passaic',
         state: 'NJ',
         postalCode: '07652',
         country: 'US',

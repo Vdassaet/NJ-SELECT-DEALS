@@ -29,7 +29,7 @@ export default function AdminSettingsPage() {
     store_email: 'njselectdeals@gmail.com',
     order_notification_email: 'orders@njselectdeals.com',
     store_phone: '',
-    store_address: 'Passaic, New Jersey, USA',
+    store_address: 'Passaic, New Jersey',
     announcement_text:
       'Free Shipping on orders over $50 | Quality Personal Care, Chocolates & Treats Delivered to Your Door',
 

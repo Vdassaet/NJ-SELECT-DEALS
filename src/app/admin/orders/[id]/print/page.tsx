@@ -92,7 +92,7 @@ export default function PrintableOrderPage({ params }: { params: { id: string } 
               </div>
               <h1 className="text-2xl font-black tracking-tight text-slate-900">NJ SELECT DEALS</h1>
             </div>
-            <p className="text-xs text-slate-600">Passaic Distribution Center • Passaic, New Jersey, USA</p>
+            <p className="text-xs text-slate-600">Passaic Distribution Center • Passaic, New Jersey</p>
             <p className="text-xs text-slate-600">Customer Support:  • orders@njselectdeals.com</p>
             <p className="text-[11px] text-slate-500">Store Website: https://njselectdeals.com</p>
           </div>
@@ -248,7 +248,7 @@ export default function PrintableOrderPage({ params }: { params: { id: string } 
           <strong>njselectdeals@gmail.com</strong> or call <strong></strong>.
         </p>
         <p className="text-[10px] text-slate-400 pt-2">
-          NJ Select Deals • Passaic, New Jersey, USA • All Rights Reserved.
+          NJ Select Deals • Passaic, New Jersey • All Rights Reserved.
         </p>
       </div>
     </div>
